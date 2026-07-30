@@ -1,56 +1,10 @@
 {
-  "students": [
-    {
-      "id": "1",
-      "fullName": "Nguyễn Văn A",
-      "age": 18,
-      "address": "Trịnh Văn Bô, Hà Nội",
-      "email": "nguyenvana@gmail.com",
-      "active": true
-    },
-    {
-      "fullName": "Trần",
-      "age": "210",
-      "address": "Lê Đức Thọ, Hà Nội",
-      "email": "tranthibich@gmail.com",
-      "active": true,
-      "id": "2"
-    },
-    {
-      "id": "3",
-      "fullName": "Lê Hoàng Nam",
-      "age": 19,
-      "address": "Quận 1, TP. HCM",
-      "email": "namlh@yahoo.com",
-      "active": true
-    }
-  ],
+  "products": [],
   "users": [
     {
-      "id": "u1",
-      "username": "admin",
-      "password": "hashed_password_123",
-      "role": "ADMIN"
-    },
-    {
-      "id": "u2",
-      "username": "staff_01",
-      "password": "hashed_password_456",
-      "role": "EDITOR"
-    },
-    {
-      "email": "supebrolyzz@gmail.com",
-      "password": "$2a$10$dbU4fuh9G6G4Vl0nMxUxWeKePvyHiCaAiVOjNUTp97PCiFEC0Sc3e",
-      "username": "sonnnph61360",
-      "role": "admin",
-      "id": "wXXOkLU"
-    },
-    {
-      "email": "supebroly2zz@gmail.com",
-      "password": "$2a$10$vA3BRzOY1SEiCmPOMSYVWuyiu9W1lwjmtafVNwgCkZ58yYB59WWrG",
-      "username": "sonnnph613601",
-      "role": "admin",
-      "id": "UznTLM-"
+      "email": "admin@gmail.com",
+      "password": "$2a$10$3cvf5QEZ67nFSzYpYScBiOcyghM9w/Y.2HoZs/9ZJC6qccHPv62Cq",
+      "id": 1
     }
   ]
 }

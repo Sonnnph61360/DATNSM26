@@ -1,15 +1,7 @@
 import { Toaster } from "react-hot-toast";
-import { Link, Route, Routes } from "react-router-dom";
-import ListPage from "./pages/ListPage";
-import AddPage from "./pages/AddPage";
-import EditPage from "./pages/EditPage";
-import Register from "./pages/Register";
-import Login from "./pages/Login";
+import { Link } from "react-router-dom";
 
 function App() {
-
-
-
   return (
     <>
       <nav className="bg-blue-600 text-white shadow">
@@ -31,10 +23,10 @@ function App() {
           </div>
 
           <div className="hidden md:flex items-center space-x-6">
-            <Link to="/login" className="hover:text-gray-200">
+            <Link to="#" className="hover:text-gray-200">
               Đăng nhập
             </Link>
-            <Link to="/register" className="hover:text-gray-200">
+            <Link to="#" className="hover:text-gray-200">
               Đăng ký
             </Link>
           </div>
@@ -46,13 +38,6 @@ function App() {
         <h1 className="text-4xl font-bold mb-4">Chào mừng đến với WEB2091</h1>
       </div>
 
-      <Routes>
-        <Route path="/list" element={<ListPage />} />
-        <Route path="/add" element={<AddPage />} />
-        <Route path="/edit/:id" element={<EditPage />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
-      </Routes>
       <Toaster />
     </>
   );
