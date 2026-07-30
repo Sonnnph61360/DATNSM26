@@ -1,5 +1,5 @@
-import { Toaster } from "react-hot-toast";
 import { Link } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 
 function App() {
   return (
@@ -47,7 +47,7 @@ function App() {
           </div>
 
           <div className="hidden md:flex items-center space-x-4 text-sm font-medium">
-            <Link to="#" className="hover:text-emerald-600 flex items-center gap-1">
+            <Link to="/login" className="hover:text-emerald-600 flex items-center gap-1">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
               </svg>
