@@ -1,5 +1,7 @@
 import { Toaster } from "react-hot-toast";
 import { Link } from "react-router-dom";
+import Detail from "./pages/Detail";
+import { Routes, Route } from "react-router-dom";
 
 function App() {
   return (
@@ -37,6 +39,11 @@ function App() {
       <div className="max-w-6xl mx-auto mt-10 px-4 text-center">
         <h1 className="text-4xl font-bold mb-4">Chào mừng đến với WEB2091</h1>
       </div>
+      <main className="flex-grow">
+        <Routes>
+          <Route path="/detail" element={<Detail />} />
+        </Routes>
+      </main>
 
       <Toaster />
     </>
