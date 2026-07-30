@@ -13,7 +13,6 @@ function App() {
               className="h-10 w-auto object-contain" 
             />
           </Link>
-
           <div className="hidden md:flex items-center space-x-6 font-medium text-sm">
             <Link to="#" className="hover:text-emerald-600 flex items-center gap-1">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
