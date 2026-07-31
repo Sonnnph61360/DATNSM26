@@ -1,4 +1,4 @@
-///detail
+//detail
 import { Link } from "react-router-dom";
 import {
     Heart, Share2, MapPin, Clock, Phone, LayoutGrid, CheckCircle2,
@@ -158,9 +158,9 @@ export default function Detail() {
                                 <div className="flex items-center"><div className="w-3 h-3 bg-gray-200 rounded-sm mr-2" /> Đã đặt</div>
                             </div>
 
-                            <button className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold flex justify-center items-center transition shadow-lg shadow-green-500/20">
+                            <Link to="/booking" className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold flex justify-center items-center transition shadow-lg shadow-green-500/20">
                                 <CalendarDays className="w-4 h-4 mr-2" /> Đặt sân ngay
-                            </button>
+                            </Link>
                         </div>
                     </div>
 
@@ -216,9 +216,9 @@ export default function Detail() {
                                 </div>
                             </div>
 
-                            <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold flex justify-center items-center transition shadow-lg shadow-green-500/20 mb-3">
+                            <Link to="/booking" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold flex justify-center items-center transition shadow-lg shadow-green-500/20 mb-3">
                                 <CalendarDays className="w-5 h-5 mr-2" /> Đặt sân ngay
-                            </button>
+                            </Link>
 
                             <button className="w-full bg-white border-2 border-blue-500 hover:bg-green-50 text-blue-600 py-3.5 rounded-xl font-bold flex justify-center items-center transition">
                                 <Phone className="w-5 h-5 mr-2" /> Gọi: 0987400019
