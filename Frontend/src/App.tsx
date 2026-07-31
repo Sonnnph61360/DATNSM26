@@ -5,7 +5,7 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import Home from "./pages/Home";
 import Detail from "./pages/Detail";
-import Blog from "./pages/Blog";
+// import Blog from "./pages/Blog";
 import FieldPage from "./pages/FieldPage";
 
 function App() {
