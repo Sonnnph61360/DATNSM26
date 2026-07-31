@@ -1,4 +1,10 @@
-import { ChangeEvent, FormEvent, useState } from "react";
+import { Form, Input, Button } from "antd";
+import {
+  UserOutlined,
+  MailOutlined,
+  PhoneOutlined,
+  LockOutlined,
+} from "@ant-design/icons";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -7,56 +13,26 @@ const API_URL = "http://localhost:3000";
 
 function Register() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({
-    fullName: "",
-    email: "",
-    phone: "",
-    password: "",
-    confirmPassword: "",
-  });
+  const [form] = Form.useForm();
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-
-    if (!form.fullName.trim()) {
-      toast.error("Vui lòng nhập họ và tên");
-      return;
-    }
-
-    if (!form.email.trim()) {
-      toast.error("Vui lòng nhập email");
-      return;
-    }
-
-    if (!form.phone.trim()) {
-      toast.error("Vui lòng nhập số điện thoại");
-      return;
-    }
-
-    if (form.password.length < 6) {
-      toast.error("Mật khẩu phải có ít nhất 6 ký tự");
-      return;
-    }
-
-    if (form.password !== form.confirmPassword) {
+  const onFinish = async (values: {
+    fullName: string;
+    email: string;
+    phone: string;
+    password: string;
+    confirmPassword: string;
+  }) => {
+    if (values.password !== values.confirmPassword) {
       toast.error("Mật khẩu xác nhận không khớp");
       return;
     }
 
-    setLoading(true);
-
     try {
       await axios.post(`${API_URL}/register`, {
-        email: form.email,
-        password: form.password,
-        fullName: form.fullName,
-        phone: form.phone,
+        email: values.email,
+        password: values.password,
+        fullName: values.fullName,
+        phone: values.phone,
       });
 
       toast.success("Đăng ký thành công! Vui lòng đăng nhập.");
@@ -71,112 +47,128 @@ function Register() {
       } else {
         toast.error("Không thể kết nối server. Hãy chạy npm run db");
       }
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 px-4">
-      <h2 className="text-2xl font-bold mb-2 text-center">Tạo tài khoản</h2>
-      <p className="text-gray-600 text-center mb-6">
-        Đăng ký để đặt sân bóng rổ
-      </p>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="fullName" className="block text-sm font-medium mb-1">
-            Họ và tên
-          </label>
-          <input
-            id="fullName"
-            name="fullName"
-            type="text"
-            placeholder="Nhập họ và tên"
-            value={form.fullName}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium mb-1">
-            Email
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            placeholder="example@gmail.com"
-            value={form.email}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="phone" className="block text-sm font-medium mb-1">
-            Số điện thoại
-          </label>
-          <input
-            id="phone"
-            name="phone"
-            type="text"
-            placeholder="09xxxxxxxx"
-            value={form.phone}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium mb-1">
-            Mật khẩu
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            placeholder="********"
-            value={form.password}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2"
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="confirmPassword"
-            className="block text-sm font-medium mb-1"
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="w-[480px] rounded-3xl bg-white p-10 shadow-xl">
+        <div className="flex justify-end">
+          <Link
+            to="/"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200"
           >
-            Xác nhận mật khẩu
-          </label>
-          <input
-            id="confirmPassword"
-            name="confirmPassword"
-            type="password"
-            placeholder="********"
-            value={form.confirmPassword}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2"
-          />
+            ✕
+          </Link>
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-60"
-        >
-          {loading ? "Đang xử lý..." : "Đăng ký"}
-        </button>
-      </form>
+        <div className="mx-auto mt-2 flex h-20 w-20 items-center justify-center rounded-2xl bg-green-500 text-4xl text-white">
+          ⚽
+        </div>
 
-      <p className="text-center mt-4 text-sm text-gray-600">
-        Đã có tài khoản?
-        <Link to="/login" className="text-blue-600 font-medium ml-1">
-          Đăng nhập
-        </Link>
-      </p>
+        <h1 className="mt-6 text-center text-4xl font-bold">Đăng ký</h1>
+
+        <p className="mt-2 mb-8 text-center text-gray-500">
+          Tạo tài khoản để đặt sân nhanh hơn và xem lịch sử
+        </p>
+
+        <Form form={form} layout="vertical" onFinish={onFinish}>
+          <Form.Item
+            name="fullName"
+            rules={[
+              { required: true, message: "Vui lòng nhập họ và tên" },
+            ]}
+          >
+            <Input
+              size="large"
+              prefix={<UserOutlined />}
+              placeholder="Họ và tên"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="email"
+            rules={[
+              { required: true, message: "Vui lòng nhập email" },
+              { type: "email", message: "Email không hợp lệ" },
+            ]}
+          >
+            <Input
+              size="large"
+              prefix={<MailOutlined />}
+              placeholder="Email"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="phone"
+            rules={[
+              { required: true, message: "Vui lòng nhập số điện thoại" },
+            ]}
+          >
+            <Input
+              size="large"
+              prefix={<PhoneOutlined />}
+              placeholder="Số điện thoại"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="password"
+            rules={[
+              { required: true, message: "Vui lòng nhập mật khẩu" },
+              { min: 6, message: "Mật khẩu phải có ít nhất 6 ký tự" },
+            ]}
+          >
+            <Input.Password
+              size="large"
+              prefix={<LockOutlined />}
+              placeholder="Mật khẩu"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="confirmPassword"
+            dependencies={["password"]}
+            rules={[
+              { required: true, message: "Vui lòng xác nhận mật khẩu" },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue("password") === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(
+                    new Error("Mật khẩu xác nhận không khớp")
+                  );
+                },
+              }),
+            ]}
+          >
+            <Input.Password
+              size="large"
+              prefix={<LockOutlined />}
+              placeholder="Xác nhận mật khẩu"
+            />
+          </Form.Item>
+
+          <Button
+            htmlType="submit"
+            type="primary"
+            block
+            size="large"
+            className="!h-12 !rounded-xl !bg-green-600 hover:!bg-green-700"
+          >
+            Đăng ký
+          </Button>
+        </Form>
+
+        <p className="mt-6 text-center">
+          Đã có tài khoản?
+          <Link to="/login" className="ml-1 font-semibold text-green-600">
+            Đăng nhập ngay
+          </Link>
+        </p>
+      </div>
     </div>
   );
 }
