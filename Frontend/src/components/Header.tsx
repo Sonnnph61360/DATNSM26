@@ -37,11 +37,11 @@ export default function Header() {
                 </div>
 
                 <div className="flex items-center space-x-4">
-                    <Link to="#" className="text-sm font-medium text-gray-700 flex items-center hover:text-blue-600 transition-colors">
+                    <Link to="/login" className="text-sm font-medium text-gray-700 flex items-center hover:text-blue-600 transition-colors">
                         <LogIn className="w-4 h-4 mr-1.5" />
                         Đăng nhập
                     </Link>
-                    <Link to="#" className="text-sm font-medium text-gray-700 hover:text-green-600 transition-colors">
+                    <Link to="/register" className="text-sm font-medium text-gray-700 hover:text-green-600 transition-colors">
                         Đăng ký
                     </Link>
                     <Link to="#" className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold flex items-center shadow-sm transition-colors cursor-pointer">

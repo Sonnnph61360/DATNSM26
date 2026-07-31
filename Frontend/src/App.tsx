@@ -1,10 +1,7 @@
-import { Routes, Route } from "react-router-dom";
-import { Toaster } from "react-hot-toast";
+import { Outlet } from "react-router-dom";
 
 import Header from "./components/Header";
 import Footer from "./components/Footer";
-import Home from "./pages/Home";
-import Detail from "./pages/Detail";
 
 function App() {
   return (
@@ -12,14 +9,10 @@ function App() {
       <Header />
 
       <main className="flex-grow">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/detail" element={<Detail />} />
-        </Routes>
+        <Outlet />
       </main>
 
       <Footer />
-      <Toaster />
     </div>
   );
 }
