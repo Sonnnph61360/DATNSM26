@@ -2,6 +2,8 @@ import { Routes, Route } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import Home from "./pages/Home";
 import Detail from "./pages/Detail";
+import Booking from "./pages/Booking";
+import List from "./pages/List";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ClientLayout from "./layouts/ClientLayout";
@@ -13,9 +15,11 @@ function App() {
         <Route path="/*" element={<ClientLayout />}>
           <Route index element={<Home />} />
           <Route path="detail" element={<Detail />} />
+          <Route path="booking" element={<Booking />} />
+          <Route path="tim-san" element={<List />} />
+          <Route path="login" element={<Login />} />
+          <Route path="register" element={<Register />} />
         </Route>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
       </Routes>
       <Toaster />
     </>
@@ -23,3 +27,4 @@ function App() {
 }
 
 export default App;
+ 
