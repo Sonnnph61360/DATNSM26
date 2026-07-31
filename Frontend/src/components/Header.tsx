@@ -1,7 +1,11 @@
 import { Link } from "react-router-dom";
 import { Search, Map, BookOpen, LayoutGrid, ChevronDown, LogIn, Store } from "lucide-react";
 
-export default function Header() {
+type HeaderProps = {
+    onOpenLogin: () => void;
+};
+
+export default function Header({ onOpenLogin }: HeaderProps) {
     return (
         <header className="bg-white shadow-sm sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
@@ -37,10 +41,13 @@ export default function Header() {
                 </div>
 
                 <div className="flex items-center space-x-4">
-                    <Link to="#" className="text-sm font-medium text-gray-700 flex items-center hover:text-blue-600 transition-colors">
+                    <button
+                        onClick={onOpenLogin}
+                        className="text-sm font-medium text-gray-700 flex items-center hover:text-green-600 transition-colors"
+                    >
                         <LogIn className="w-4 h-4 mr-1.5" />
                         Đăng nhập
-                    </Link>
+                    </button>
                     <Link to="#" className="text-sm font-medium text-gray-700 hover:text-green-600 transition-colors">
                         Đăng ký
                     </Link>
