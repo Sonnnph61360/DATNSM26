@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -9,11 +9,12 @@ import {
     User,
     CheckCircle2,
     Loader2,
+    Wallet,
 } from "lucide-react";
- 
+
 const API_URL = "http://localhost:3000";
- 
-const COURTS = ["Sân PB 1", "Sân PB 2"];
+
+const COURTS = ["Sân BB 1", "Sân BB 2"];
 const TIME_SLOTS = [
     "06:00", "07:00", "08:00", "09:00", "10:00", "11:00",
     "12:00", "13:00", "14:00", "15:00", "16:00", "17:00",
@@ -25,16 +26,25 @@ const DURATIONS = [
     { label: "2 giờ", value: 2 },
 ];
 const PRICE_PER_HOUR = 130000;
- 
+
 function formatCurrency(value: number) {
     return value.toLocaleString("vi-VN") + "đ";
 }
- 
+
 export default function Booking() {
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            toast.error("Vui lòng đăng nhập để đặt sân");
+            navigate("/login");
+        }
+    }, [navigate]);
+
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState<null | { code: string }>(null);
- 
+
     const [court, setCourt] = useState(COURTS[0]);
     const [date, setDate] = useState("");
     const [time, setTime] = useState("");
@@ -44,19 +54,20 @@ export default function Booking() {
         phone: "",
         note: "",
     });
- 
+    const [paymentMethod, setPaymentMethod] = useState("cash");
+
     const total = useMemo(() => PRICE_PER_HOUR * duration, [duration]);
- 
+
     const handleCustomerChange = (
         e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
     ) => {
         const { name, value } = e.target;
         setCustomer((prev) => ({ ...prev, [name]: value }));
     };
- 
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
- 
+
         if (!date) {
             toast.error("Vui lòng chọn ngày đặt sân");
             return;
@@ -69,25 +80,32 @@ export default function Booking() {
             toast.error("Vui lòng nhập họ và tên");
             return;
         }
+
+        const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/;
         if (!customer.phone.trim()) {
             toast.error("Vui lòng nhập số điện thoại");
             return;
         }
- 
+        if (!phoneRegex.test(customer.phone.trim())) {
+            toast.error("Số điện thoại không hợp lệ (cần 10 số, bắt đầu bằng 0)");
+            return;
+        }
+
         setLoading(true);
         try {
             const res = await axios.post(`${API_URL}/bookings`, {
-                fieldName: "002 PB Club",
+                fieldName: "002 BB Club",
                 court,
                 date,
                 time,
                 duration,
                 total,
                 customer,
+                paymentMethod,
                 status: "pending",
                 createdAt: new Date().toISOString(),
             });
- 
+
             const code = `BK${String(res.data?.id ?? Date.now()).padStart(6, "0")}`;
             setSuccess({ code });
             toast.success("Đặt sân thành công!");
@@ -101,7 +119,7 @@ export default function Booking() {
             setLoading(false);
         }
     };
- 
+
     if (success) {
         return (
             <div className="max-w-2xl mx-auto px-4 py-16 text-center">
@@ -118,7 +136,7 @@ export default function Booking() {
                     <div className="bg-gray-50 rounded-2xl p-6 text-left text-sm font-semibold text-gray-700 space-y-2 mb-8">
                         <div className="flex justify-between">
                             <span className="text-gray-500">Sân</span>
-                            <span>{court} - 002 PB Club</span>
+                            <span>{court} - 002 BB Club</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-gray-500">Ngày</span>
@@ -128,6 +146,12 @@ export default function Booking() {
                             <span className="text-gray-500">Giờ</span>
                             <span>
                                 {time} ({duration} giờ)
+                            </span>
+                        </div>
+                        <div className="flex justify-between border-t border-gray-200 pt-2 mt-2">
+                            <span className="text-gray-500">Thanh toán</span>
+                            <span className="font-semibold text-gray-800">
+                                {paymentMethod === "cash" ? "Tại sân" : "Chuyển khoản"}
                             </span>
                         </div>
                         <div className="flex justify-between border-t border-gray-200 pt-2 mt-2">
@@ -153,7 +177,7 @@ export default function Booking() {
             </div>
         );
     }
- 
+
     return (
         <div className="max-w-7xl mx-auto px-4 py-8">
             {/* BREADCRUMB */}
@@ -163,16 +187,16 @@ export default function Booking() {
                 </Link>
                 <span>/</span>
                 <Link to="/detail" className="text-blue-600 hover:underline">
-                    002 PB Club
+                    002 BB Club
                 </Link>
                 <span>/</span>
                 <span className="text-gray-600">Đặt sân</span>
             </div>
- 
+
             <h1 className="text-2xl font-extrabold text-gray-900 mb-8">
-                Đặt sân - 002 PB Club
+                Đặt sân - 002 BB Club
             </h1>
- 
+
             <form
                 onSubmit={handleSubmit}
                 className="grid grid-cols-1 lg:grid-cols-3 gap-8"
@@ -189,24 +213,23 @@ export default function Booking() {
                                     type="button"
                                     key={c}
                                     onClick={() => setCourt(c)}
-                                    className={`px-4 py-2.5 rounded-xl text-sm font-bold border transition ${
-                                        court === c
-                                            ? "bg-blue-600 border-blue-600 text-white"
-                                            : "border-gray-200 text-gray-600 hover:border-blue-400"
-                                    }`}
+                                    className={`px-4 py-2.5 rounded-xl text-sm font-bold border transition ${court === c
+                                        ? "bg-blue-600 border-blue-600 text-white"
+                                        : "border-gray-200 text-gray-600 hover:border-blue-400"
+                                        }`}
                                 >
-                                    🏓 {c}
+                                    🏀 {c}
                                 </button>
                             ))}
                         </div>
                     </div>
- 
+
                     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
                         <h3 className="font-extrabold text-gray-900 mb-4 flex items-center">
                             <CalendarDays className="w-4 h-4 mr-2 text-blue-600" /> Chọn
                             ngày &amp; giờ
                         </h3>
- 
+
                         <label className="block text-sm font-semibold text-gray-600 mb-2">
                             Ngày đặt sân
                         </label>
@@ -217,7 +240,7 @@ export default function Booking() {
                             onChange={(e) => setDate(e.target.value)}
                             className="w-full md:w-64 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-semibold mb-6 outline-none focus:border-blue-500"
                         />
- 
+
                         <label className="block text-sm font-semibold text-gray-600 mb-2">
                             Khung giờ
                         </label>
@@ -227,17 +250,16 @@ export default function Booking() {
                                     type="button"
                                     key={t}
                                     onClick={() => setTime(t)}
-                                    className={`border rounded-lg py-2 text-center text-xs font-bold transition ${
-                                        time === t
-                                            ? "bg-blue-600 border-blue-600 text-white"
-                                            : "border-gray-200 text-gray-700 hover:border-blue-500 hover:text-blue-600"
-                                    }`}
+                                    className={`border rounded-lg py-2 text-center text-xs font-bold transition ${time === t
+                                        ? "bg-blue-600 border-blue-600 text-white"
+                                        : "border-gray-200 text-gray-700 hover:border-blue-500 hover:text-blue-600"
+                                        }`}
                                 >
                                     {t}
                                 </button>
                             ))}
                         </div>
- 
+
                         <label className="block text-sm font-semibold text-gray-600 mb-2">
                             Thời lượng
                         </label>
@@ -247,18 +269,17 @@ export default function Booking() {
                                     type="button"
                                     key={d.value}
                                     onClick={() => setDuration(d.value)}
-                                    className={`px-4 py-2 rounded-xl text-sm font-bold border transition ${
-                                        duration === d.value
-                                            ? "bg-blue-600 border-blue-600 text-white"
-                                            : "border-gray-200 text-gray-600 hover:border-blue-400"
-                                    }`}
+                                    className={`px-4 py-2 rounded-xl text-sm font-bold border transition ${duration === d.value
+                                        ? "bg-blue-600 border-blue-600 text-white"
+                                        : "border-gray-200 text-gray-600 hover:border-blue-400"
+                                        }`}
                                 >
                                     {d.label}
                                 </button>
                             ))}
                         </div>
                     </div>
- 
+
                     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
                         <h3 className="font-extrabold text-gray-900 mb-4 flex items-center">
                             <User className="w-4 h-4 mr-2 text-blue-600" /> Thông tin liên
@@ -318,8 +339,48 @@ export default function Booking() {
                             </div>
                         </div>
                     </div>
+
+                    {/* PAYMENT METHOD UI */}
+                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+                        <h3 className="font-extrabold text-gray-900 mb-4 flex items-center">
+                            <Wallet className="w-4 h-4 mr-2 text-blue-600" /> Phương thức thanh toán
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <label className={`block border rounded-xl p-4 cursor-pointer transition select-none ${paymentMethod === 'cash' ? 'border-blue-600 bg-blue-50/50 shadow-sm' : 'border-gray-200 hover:border-blue-400'}`}>
+                                <div className="flex items-center">
+                                    <input
+                                        type="radio"
+                                        name="paymentMethod"
+                                        className="w-4 h-4 text-blue-600"
+                                        checked={paymentMethod === 'cash'}
+                                        onChange={() => setPaymentMethod('cash')}
+                                    />
+                                    <div className="ml-3">
+                                        <div className="font-bold text-gray-800 text-sm">Thanh toán tại sân</div>
+                                        <div className="text-xs text-gray-500 mt-0.5">Tiền mặt, quét mã QR tại quầy</div>
+                                    </div>
+                                </div>
+                            </label>
+
+                            <label className={`block border rounded-xl p-4 cursor-pointer transition select-none ${paymentMethod === 'transfer' ? 'border-blue-600 bg-blue-50/50 shadow-sm' : 'border-gray-200 hover:border-blue-400'}`}>
+                                <div className="flex items-center">
+                                    <input
+                                        type="radio"
+                                        name="paymentMethod"
+                                        className="w-4 h-4 text-blue-600"
+                                        checked={paymentMethod === 'transfer'}
+                                        onChange={() => setPaymentMethod('transfer')}
+                                    />
+                                    <div className="ml-3">
+                                        <div className="font-bold text-gray-800 text-sm">Chuyển khoản trực tuyến</div>
+                                        <div className="text-xs text-gray-500 mt-0.5">Momo, ZaloPay, Thẻ ATM</div>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
                 </div>
- 
+
                 {/* RIGHT: order summary (sticky) */}
                 <div className="lg:col-span-1">
                     <div className="sticky top-24">
@@ -327,7 +388,7 @@ export default function Booking() {
                             <h3 className="font-extrabold text-gray-900 mb-6">
                                 Tóm tắt đơn đặt sân
                             </h3>
- 
+
                             <div className="space-y-4 mb-8 text-sm font-semibold">
                                 <div className="flex justify-between items-center border-b border-gray-100 pb-3">
                                     <span className="text-gray-500 flex items-center">
@@ -362,7 +423,7 @@ export default function Booking() {
                                     </span>
                                 </div>
                             </div>
- 
+
                             <button
                                 type="submit"
                                 disabled={loading}
@@ -375,7 +436,7 @@ export default function Booking() {
                                 )}
                                 {loading ? "Đang xử lý..." : "Xác nhận đặt sân"}
                             </button>
- 
+
                             <button
                                 type="button"
                                 onClick={() => navigate(-1)}
@@ -383,7 +444,7 @@ export default function Booking() {
                             >
                                 Quay lại
                             </button>
- 
+
                             <div className="text-center mt-4 text-xs font-semibold text-gray-400">
                                 🛡️ Đặt cọc an toàn - Hủy trước 2h miễn phí
                             </div>
@@ -394,4 +455,3 @@ export default function Booking() {
         </div>
     );
 }
- 

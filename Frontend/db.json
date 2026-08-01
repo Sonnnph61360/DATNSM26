@@ -5,6 +5,13 @@
       "email": "admin@gmail.com",
       "password": "$2a$10$3cvf5QEZ67nFSzYpYScBiOcyghM9w/Y.2HoZs/9ZJC6qccHPv62Cq",
       "id": 1
+    },
+    {
+      "email": "supebrolyzz@gmail.com",
+      "password": "$2a$10$G.llrEU3jMnX9JZ4TkwOJeCQ/gQn2gqcKXVHFL1W5gQA/.YGmHbPa",
+      "fullName": "Nguyễn Ngọc Sơn",
+      "phone": "0978387437",
+      "id": 2
     }
   ]
 }
