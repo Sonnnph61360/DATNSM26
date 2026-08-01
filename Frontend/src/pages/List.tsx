@@ -8,8 +8,8 @@ import {
   LayoutGrid,
   ChevronLeft,
   ChevronRight,
-  Facebook,
-  Youtube,
+  Globe,
+  Mail,
   ImageOff,
 } from "lucide-react";
 
@@ -101,11 +101,10 @@ function VenueCard({ venue, view }: { venue: Venue; view: "list" | "grid" }) {
     return (
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition p-4 flex flex-col gap-3">
         <div
-          className={`h-32 w-full rounded-lg flex items-center justify-center text-4xl ${
-            venue.hasImage
+          className={`h-32 w-full rounded-lg flex items-center justify-center text-4xl ${venue.hasImage
               ? `bg-gradient-to-br ${info.gradient}`
               : "bg-gray-100 text-gray-300 border border-gray-200"
-          }`}
+            }`}
         >
           {venue.hasImage ? info.icon : <ImageOff className="h-8 w-8" />}
         </div>
@@ -322,11 +321,10 @@ export default function TimSan() {
                   setSelectedSport("all");
                   setPage(1);
                 }}
-                className={`w-full flex items-center gap-2 text-sm rounded-md px-3 py-2 transition ${
-                  selectedSport === "all"
+                className={`w-full flex items-center gap-2 text-sm rounded-md px-3 py-2 transition ${selectedSport === "all"
                     ? "bg-emerald-50 text-emerald-700 font-semibold"
                     : "text-gray-600 hover:bg-gray-50"
-                }`}
+                  }`}
               >
                 <span>🏟️</span> Tất cả
               </button>
@@ -337,11 +335,10 @@ export default function TimSan() {
                     setSelectedSport(s.key);
                     setPage(1);
                   }}
-                  className={`w-full flex items-center gap-2 text-sm rounded-md px-3 py-2 transition ${
-                    selectedSport === s.key
+                  className={`w-full flex items-center gap-2 text-sm rounded-md px-3 py-2 transition ${selectedSport === s.key
                       ? "bg-emerald-50 text-emerald-700 font-semibold"
                       : "text-gray-600 hover:bg-gray-50"
-                  }`}
+                    }`}
                 >
                   <span>{s.icon}</span> {s.label}
                 </button>
@@ -411,11 +408,10 @@ export default function TimSan() {
               <button
                 key={n}
                 onClick={() => setPage(n)}
-                className={`h-8 w-8 flex items-center justify-center rounded-md text-sm font-medium ${
-                  n === currentPage
+                className={`h-8 w-8 flex items-center justify-center rounded-md text-sm font-medium ${n === currentPage
                     ? "bg-emerald-600 text-white"
                     : "border border-gray-200 text-gray-600 hover:bg-gray-50"
-                }`}
+                  }`}
               >
                 {n}
               </button>
@@ -456,9 +452,9 @@ export default function TimSan() {
               {TOTAL_VENUES_LABEL} sân thể thao tốt nhất cả nước.
             </p>
             <div className="flex items-center gap-3 mt-4">
-              <Facebook className="h-4 w-4 hover:text-white cursor-pointer" />
+              <Globe className="h-4 w-4 hover:text-white cursor-pointer" />
               <span className="h-4 w-4 hover:text-white cursor-pointer text-xs font-bold">TT</span>
-              <Youtube className="h-4 w-4 hover:text-white cursor-pointer" />
+              <Mail className="h-4 w-4 hover:text-white cursor-pointer" />
             </div>
           </div>
 
