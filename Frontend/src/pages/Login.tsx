@@ -1,10 +1,27 @@
 import { Form, Input, Button } from "antd";
-import { PhoneOutlined, LockOutlined } from "@ant-design/icons";
-import { Link } from "react-router-dom";
+import { MailOutlined, LockOutlined } from "@ant-design/icons";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
+import toast from "react-hot-toast";
+
+const API_URL = "http://localhost:3000";
 
 function Login() {
-    const onFinish = (values: any) => {
-        console.log(values);
+    const navigate = useNavigate();
+
+    const onFinish = async (values: any) => {
+        try {
+            const res = await axios.post(`${API_URL}/login`, {
+                email: values.email,
+                password: values.password,
+            });
+            localStorage.setItem("token", res.data.accessToken);
+            localStorage.setItem("user", JSON.stringify(res.data.user));
+            toast.success("Đăng nhập thành công!");
+            navigate("/");
+        } catch (error) {
+            toast.error("Sai email hoặc mật khẩu!");
+        }
     };
 
     return (
@@ -34,18 +51,18 @@ function Login() {
                 <Form layout="vertical" onFinish={onFinish}>
 
                     <Form.Item
-                        name="phone"
+                        name="email"
                         rules={[
                             {
                                 required: true,
-                                message: "Vui lòng nhập số điện thoại",
+                                message: "Vui lòng nhập email",
                             },
                         ]}
                     >
                         <Input
                             size="large"
-                            prefix={<PhoneOutlined />}
-                            placeholder="Số điện thoại"
+                            prefix={<MailOutlined />}
+                            placeholder="Email"
                         />
                     </Form.Item>
 
