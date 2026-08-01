@@ -29,37 +29,36 @@ const { Title, Text } = Typography;
 const stadiums = [
   {
     id: 1,
-    name: "002 PB Club",
-    location: "Thủ Đức, Hồ Chí Minh",
-    sport: "Bóng đá",
+    name: "Sân TVB",
+    location: "Phương Canh - Nam Từ Liêm - Hà Nội",
+    sport: "Bóng rổ",
     count: 2,
     image:
-      "https://images.unsplash.com/photo-1552667466-07770ae110d0?w=600",
+      "https://www.decathlon.vn/blog/wp-content/uploads/2025/04/1-san-bong-ro-sai-gon.png",
   },
   {
     id: 2,
-    name: "3T PB Club",
-    location: "Quận 8, Hồ Chí Minh",
-    sport: "Pickleball",
+    name: "Sân Liên Mạc",
+    location: "Hoàng Liên - Bắc Từ Liêm - Hà Nội",
+    sport: "Bóng rổ",
     count: 4,
     image:
-      "https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=600",
+      "https://sonsanepoxy.vn/storage/news/thi-cong-san-bong-ro-11.jpg",
   },
   {
     id: 3,
     name: "Green Stadium",
-    location: "Hà Nội",
-    sport: "Bóng đá",
+    location: "Phú Thượng - Tây HỒ - Hà Nội",
+    sport: "Bóng rổ",
     count: 5,
     image:
-      "https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=600",
+      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7K8JLwJB8BB5jd5kVpEdOgshG3Qum9SaxY3l0Kgok_cqnuqFIlC3VzbG8&s=10",
   },
 ];
 
 export default function FieldPage() {
   return (
     <Layout style={{ background: "#f6f7fb" }}>
-      {/* HERO */}
 
       <div className="hero">
 
@@ -70,12 +69,8 @@ export default function FieldPage() {
           </Text>
 
           <Title style={{ color: "#fff", marginTop: 10 }}>
-            🔍 Tìm sân thể thao
+            🔍 Tìm sân bóng rổ thể thao
           </Title>
-
-          <Text style={{ color: "#d9f7be", fontSize: 18 }}>
-            Tìm thấy 438 cơ sở phù hợp
-          </Text>
 
           <Row gutter={16} style={{ marginTop: 30 }}>
             <Col span={8}>
@@ -83,31 +78,6 @@ export default function FieldPage() {
                 size="large"
                 prefix={<SearchOutlined />}
                 placeholder="Tên sân..."
-              />
-            </Col>
-
-            <Col span={6}>
-              <Select
-                style={{ width: "100%" }}
-                size="large"
-                defaultValue="Tất cả loại sân"
-                options={[
-                  { value: "all", label: "Tất cả loại sân" },
-                  { value: "football", label: "Bóng đá" },
-                  { value: "pickle", label: "Pickleball" },
-                ]}
-              />
-            </Col>
-
-            <Col span={6}>
-              <Select
-                style={{ width: "100%" }}
-                size="large"
-                defaultValue="Tất cả tỉnh"
-                options={[
-                  { value: "hn", label: "Hà Nội" },
-                  { value: "hcm", label: "Hồ Chí Minh" },
-                ]}
               />
             </Col>
 
@@ -132,31 +102,12 @@ export default function FieldPage() {
 
           <Col span={6}>
 
-            <Card title="Loại sân">
-
-              <List
-                dataSource={[
-                  "Tất cả",
-                  "Bóng đá",
-                  "Bóng chuyền",
-                  "Bóng rổ",
-                  "Pickleball",
-                  "Tennis",
-                ]}
-                renderItem={(item) => (
-                  <List.Item>{item}</List.Item>
-                )}
-              />
-
-            </Card>
-
           </Col>
 
 
           <Col span={18}>
 
             <Card
-              title="438 cơ sở"
               extra={
                 <Radio.Group defaultValue="list">
                   <Radio.Button value="list">

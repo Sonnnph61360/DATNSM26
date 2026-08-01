@@ -24,28 +24,28 @@ const { Search } = Input;
 const blogs = [
   {
     id: 1,
-    title: "Top 10 phần mềm quản lý sân bóng tốt nhất",
+    title: "Top 10 phần mềm quản lý sân tốt nhất",
     category: "Phần mềm",
     image:
-      "https://images.unsplash.com/photo-1551958219-acbc608c6377",
-    desc: "Tổng hợp những phần mềm quản lý sân bóng phổ biến hiện nay.",
+      "https://munichgroup.vn/wp-content/uploads/san-bong-ro-dep-9-1.webp",
+    desc: "Mẫu sân bóng rổ đẹp – sành điệu được giới trẻ yêu thích.",
     date: "31/07/2026",
   },
   {
     id: 2,
-    title: "Kinh nghiệm kinh doanh sân bóng hiệu quả",
+    title: "Kinh nghiệm kinh doanh sân bóng rổ hiệu quả",
     category: "Kinh doanh",
     image:
-      "https://images.unsplash.com/photo-1517466787929-bc90951d0974",
+      "https://bizweb.dktcdn.net/100/180/757/files/kich-thuoc-san-bong-ro-tre-em-la-bao-nhieu.jpg?v=1531377224399",
     desc: "Những kinh nghiệm giúp tăng doanh thu sân bóng.",
     date: "30/07/2026",
   },
   {
     id: 3,
-    title: "Xu hướng sân bóng năm 2026",
+    title: "Xu hướng sân bóng rổ năm 2026",
     category: "Xu hướng",
     image:
-      "https://images.unsplash.com/photo-1522778119026-d647f0596c20",
+      "https://www.myuc.vn/uploads/products/2023/03/24/3.jpg",
     desc: "Những xu hướng nổi bật trong ngành thể thao.",
     date: "29/07/2026",
   },
