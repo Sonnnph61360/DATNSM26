@@ -12,7 +12,7 @@ export default function Header() {
                     </Link>
 
                     <nav className="hidden lg:flex items-center space-x-6 text-sm font-medium text-gray-700">
-                        <Link to="#" className="flex items-center hover:text-blue-600 transition-colors">
+                        <Link to="/fields" className="flex items-center hover:text-blue-600 transition-colors">
                             <Search className="w-4 h-4 mr-1.5" />
                             Tìm sân
                         </Link>
@@ -20,7 +20,7 @@ export default function Header() {
                             <Map className="w-4 h-4 mr-1.5" />
                             Bản đồ
                         </Link>
-                        <Link to="#" className="flex items-center hover:text-blue-600 transition-colors">
+                        <Link to="/blog" className="flex items-center hover:text-blue-600 transition-colors">
                             <BookOpen className="w-4 h-4 mr-1.5" />
                             Blog
                         </Link>

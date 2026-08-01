@@ -1,0 +1,9 @@
+.hero {
+    padding: 40px;
+    background: #001529; /* Màu nền dự phòng */
+    text-align: center;
+}
+.hero-content {
+    max-width: 800px;
+    margin: 0 auto;
+}

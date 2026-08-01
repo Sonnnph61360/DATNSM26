@@ -7,6 +7,8 @@ import List from "./pages/List";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ClientLayout from "./layouts/ClientLayout";
+import Blog from "./pages/Blog";
+import FieldPage from "./pages/FieldPage";
 
 function App() {
   return (
@@ -17,6 +19,8 @@ function App() {
           <Route path="detail" element={<Detail />} />
           <Route path="booking" element={<Booking />} />
           <Route path="tim-san" element={<List />} />
+          <Route path="fields" element={<FieldPage />} />
+          <Route path="blog" element={<Blog />} />
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
         </Route>

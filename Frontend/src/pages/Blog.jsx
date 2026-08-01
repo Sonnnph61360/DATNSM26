@@ -159,13 +159,9 @@ export default function Blog() {
                   </List.Item>
                 )}
               />
-
             </Card>
-
           </Col>
-
         </Row>
-
       </Content>
     </Layout>
   );
