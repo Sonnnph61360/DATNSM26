@@ -13,5 +13,35 @@
       "phone": "0978387437",
       "id": 2
     }
+  ],
+  "courts": [
+    {
+      "name": "002 PB Club - Sân 1",
+      "type": "Pickleball",
+      "price": 130000,
+      "status": "maintenance",
+      "id": 1
+    },
+    {
+      "id": 2,
+      "name": "002 PB Club - Sân 2",
+      "type": "Pickleball",
+      "price": 130000,
+      "status": "active"
+    },
+    {
+      "id": 3,
+      "name": "Green Stadium - Sân VIP",
+      "type": "Bóng đá 7 người",
+      "price": 350000,
+      "status": "maintenance"
+    },
+    {
+      "id": 4,
+      "name": "3T PB Club - Sân 4",
+      "type": "Pickleball",
+      "price": 120000,
+      "status": "active"
+    }
   ]
 }
