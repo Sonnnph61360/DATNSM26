@@ -6,6 +6,7 @@
       "password": "$2a$10$3cvf5QEZ67nFSzYpYScBiOcyghM9w/Y.2HoZs/9ZJC6qccHPv62Cq",
       "id": 1
     }
+   
   ],
   "courts": [
     {
@@ -21,13 +22,6 @@
       "type": "Pickleball",
       "price": 130000,
       "status": "active"
-    },
-    {
-      "id": 3,
-      "name": "Green Stadium - Sân VIP",
-      "type": "Bóng đá 7 người",
-      "price": 350000,
-      "status": "maintenance"
     },
     {
       "id": 4,
@@ -63,7 +57,7 @@
       "duration": 1,
       "total": 130000,
       "customer": {
-        "fullName": "hoang",
+        "fullName": "vinh",
         "phone": "0363715020",
         "note": "ok"
       },
