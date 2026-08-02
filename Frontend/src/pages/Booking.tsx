@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -14,7 +14,7 @@ import {
 
 const API_URL = "http://localhost:3000";
 
-const COURTS = ["Sân BB 1", "Sân BB 2"];
+const COURTS = ["Sân PB 1", "Sân PB 2"];
 const TIME_SLOTS = [
     "06:00", "07:00", "08:00", "09:00", "10:00", "11:00",
     "12:00", "13:00", "14:00", "15:00", "16:00", "17:00",
@@ -33,15 +33,6 @@ function formatCurrency(value: number) {
 
 export default function Booking() {
     const navigate = useNavigate();
-
-    useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (!token) {
-            toast.error("Vui lòng đăng nhập để đặt sân");
-            navigate("/login");
-        }
-    }, [navigate]);
-
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState<null | { code: string }>(null);
 
@@ -94,7 +85,7 @@ export default function Booking() {
         setLoading(true);
         try {
             const res = await axios.post(`${API_URL}/bookings`, {
-                fieldName: "002 BB Club",
+                fieldName: "002 PB Club",
                 court,
                 date,
                 time,
@@ -136,7 +127,7 @@ export default function Booking() {
                     <div className="bg-gray-50 rounded-2xl p-6 text-left text-sm font-semibold text-gray-700 space-y-2 mb-8">
                         <div className="flex justify-between">
                             <span className="text-gray-500">Sân</span>
-                            <span>{court} - 002 BB Club</span>
+                            <span>{court} - 002 PB Club</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-gray-500">Ngày</span>
@@ -187,14 +178,14 @@ export default function Booking() {
                 </Link>
                 <span>/</span>
                 <Link to="/detail" className="text-blue-600 hover:underline">
-                    002 BB Club
+                    002 PB Club
                 </Link>
                 <span>/</span>
                 <span className="text-gray-600">Đặt sân</span>
             </div>
 
             <h1 className="text-2xl font-extrabold text-gray-900 mb-8">
-                Đặt sân - 002 BB Club
+                Đặt sân - 002 PB Club
             </h1>
 
             <form
@@ -218,7 +209,7 @@ export default function Booking() {
                                         : "border-gray-200 text-gray-600 hover:border-blue-400"
                                         }`}
                                 >
-                                    🏀 {c}
+                                    🏓 {c}
                                 </button>
                             ))}
                         </div>
