@@ -6,7 +6,6 @@
       "password": "$2a$10$3cvf5QEZ67nFSzYpYScBiOcyghM9w/Y.2HoZs/9ZJC6qccHPv62Cq",
       "id": 1
     }
-   
   ],
   "courts": [
     {
@@ -62,7 +61,7 @@
         "note": "ok"
       },
       "paymentMethod": "cash",
-      "status": "pending",
+      "status": "approved",
       "createdAt": "2026-08-01T06:31:17.367Z",
       "id": 2
     }
