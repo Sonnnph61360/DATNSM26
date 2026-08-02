@@ -5,14 +5,8 @@
       "email": "admin@gmail.com",
       "password": "$2a$10$3cvf5QEZ67nFSzYpYScBiOcyghM9w/Y.2HoZs/9ZJC6qccHPv62Cq",
       "id": 1
-    },
-    {
-      "email": "supebrolyzz@gmail.com",
-      "password": "$2a$10$G.llrEU3jMnX9JZ4TkwOJeCQ/gQn2gqcKXVHFL1W5gQA/.YGmHbPa",
-      "fullName": "Nguyễn Ngọc Sơn",
-      "phone": "0978387437",
-      "id": 2
     }
+   
   ],
   "courts": [
     {
@@ -30,18 +24,47 @@
       "status": "active"
     },
     {
-      "id": 3,
-      "name": "Green Stadium - Sân VIP",
-      "type": "Bóng đá 7 người",
-      "price": 350000,
-      "status": "maintenance"
-    },
-    {
       "id": 4,
       "name": "3T PB Club - Sân 4",
       "type": "Pickleball",
       "price": 120000,
       "status": "active"
+    }
+  ],
+  "bookings": [
+    {
+      "fieldName": "002 PB Club",
+      "court": "Sân PB 1",
+      "date": "2026-08-01",
+      "time": "17:00",
+      "duration": 1,
+      "total": 130000,
+      "customer": {
+        "fullName": "hoang",
+        "phone": "0363715020",
+        "note": "ok"
+      },
+      "paymentMethod": "cash",
+      "status": "pending",
+      "createdAt": "2026-08-01T06:28:33.006Z",
+      "id": 1
+    },
+    {
+      "fieldName": "002 PB Club",
+      "court": "Sân PB 1",
+      "date": "2026-08-01",
+      "time": "21:00",
+      "duration": 1,
+      "total": 130000,
+      "customer": {
+        "fullName": "vinh",
+        "phone": "0363715020",
+        "note": "ok"
+      },
+      "paymentMethod": "cash",
+      "status": "pending",
+      "createdAt": "2026-08-01T06:31:17.367Z",
+      "id": 2
     }
   ]
 }

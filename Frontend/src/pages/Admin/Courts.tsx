@@ -29,14 +29,36 @@ export default function AddCourt({ onCourtAdded }: AddCourtProps) {
 
     const handleSubmitForm = async (values: any) => {
         try {
-            const res = await axios.post(`${API_URL}/courts`, values);
-            onCourtAdded(res.data);
-            message.success("Thêm sân bóng rổ mới thành công!");
+            if (editingCourt) {
+                // Sửa sân
+                const res = await axios.put(`${API_URL}/courts/${editingCourt.id}`, values);
+                setData(data.map(item => item.id === editingCourt.id ? res.data : item));
+                message.success("Cập nhật sân thành công!");
+            } else {
+                // Thêm sân mới
+                const res = await axios.post(`${API_URL}/courts`, values);
+                setData([...data, res.data]);
+                message.success("Thêm sân mới thành công!");
+            }
             setIsModalOpen(false);
         } catch (error) {
             message.error("Lưu thông tin thất bại!");
         }
     };
+    const handleDelete = async (id: number) => {
+        try {
+          await axios.delete(`${API_URL}/courts/${id}`);
+      
+          setData((prev) => prev.filter((item) => item.id !== id));
+      
+          message.success("Xoá sân thành công");
+        } catch (error) {
+          message.error("Xoá sân thất bại");
+        }
+      };
+
+
+
 
     return (
         <div>
