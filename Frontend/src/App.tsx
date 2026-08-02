@@ -6,9 +6,14 @@ import Booking from "./pages/Booking";
 import List from "./pages/List";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import ClientLayout from "./layouts/ClientLayout";
 import Blog from "./pages/Blog";
 import FieldPage from "./pages/FieldPage";
+import AdminLayout from "./layouts/AdminLayout";
+import AdminBookings from "./pages/AdminBookings";
+import Dashboard from "./pages/admin/Dashboard";
+import Courts from "./pages/admin/Courts";
+import CalendarPage from "./pages/admin/CalendarPage";
+import ClientLayout from "./layouts/ClientLayout";
 
 function App() {
   return (
@@ -24,6 +29,14 @@ function App() {
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
         </Route>
+
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="calendar" element={<CalendarPage />} />
+          <Route path="bookings" element={<AdminBookings />} />
+          <Route path="courts" element={<Courts />} />
+        </Route>
       </Routes>
       <Toaster />
     </>
@@ -31,4 +44,3 @@ function App() {
 }
 
 export default App;
- 
