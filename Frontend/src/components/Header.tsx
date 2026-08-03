@@ -34,11 +34,6 @@ export default function Header() {
                             Blog
                         </Link>
                         <div className="flex items-center cursor-pointer hover:text-blue-600 transition-colors">
-                            <LayoutGrid className="w-4 h-4 mr-1.5" />
-                            Phần mềm quản lý
-                            <ChevronDown className="w-4 h-4 ml-1" />
-                        </div>
-                        <div className="flex items-center cursor-pointer hover:text-blue-600 transition-colors">
                             Loại sân
                             <ChevronDown className="w-4 h-4 ml-1" />
                         </div>
