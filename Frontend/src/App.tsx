@@ -13,6 +13,7 @@ import Dashboard from "./pages/admin/Dashboard";
 import Courts from "./pages/admin/Courts";
 import CalendarPage from "./pages/admin/CalendarPage";
 import ClientLayout from "./layouts/ClientLayout";
+import MapPage from "./pages/MapPage";
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="blog" element={<Blog />} />
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
+          <Route path="ban-do" element={<MapPage />} />
         </Route>
 
         <Route path="/admin" element={<AdminLayout />}>

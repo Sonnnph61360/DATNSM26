@@ -24,7 +24,10 @@ export default function Header() {
                         <Link to="/fields" className="flex items-center hover:text-blue-600 transition-colors">
                             Danh Sách
                         </Link>
-                        <Link to="#" className="flex items-center hover:text-blue-600 transition-colors">
+                        <Link
+                            to="/map"
+                            className="flex items-center hover:text-blue-600 transition-colors"
+                        >
                             <Map className="w-4 h-4 mr-1.5" />
                             Bản đồ
                         </Link>
