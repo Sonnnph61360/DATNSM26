@@ -1,206 +1,180 @@
-// tim kiem
-import {
-  Layout,
-  Row,
-  Col,
-  Card,
-  Input,
-  Select,
-  Button,
-  List,
-  Tag,
-  Typography,
-  Pagination,
-  Radio,
-} from "antd";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { Input, Select, Spin, Pagination } from "antd";
+import { SearchOutlined, EnvironmentOutlined } from "@ant-design/icons";
+import { fetchFields } from "../lib/api";
 
-import {
-  SearchOutlined,
-  EnvironmentOutlined,
-  AppstoreOutlined,
-  BarsOutlined,
-} from "@ant-design/icons";
-
-import "./field.css";
-
-const { Content } = Layout;
-const { Title, Text } = Typography;
-
-const stadiums = [
-  {
-    id: 1,
-    name: "Sân TVB",
-    location: "Phương Canh - Nam Từ Liêm - Hà Nội",
-    sport: "Bóng rổ",
-    count: 2,
-    image:
-      "https://www.decathlon.vn/blog/wp-content/uploads/2025/04/1-san-bong-ro-sai-gon.png",
-  },
-  {
-    id: 2,
-    name: "Sân Liên Mạc",
-    location: "Hoàng Liên - Bắc Từ Liêm - Hà Nội",
-    sport: "Bóng rổ",
-    count: 4,
-    image:
-      "https://sonsanepoxy.vn/storage/news/thi-cong-san-bong-ro-11.jpg",
-  },
-  {
-    id: 3,
-    name: "Green Stadium",
-    location: "Phú Thượng - Tây HỒ - Hà Nội",
-    sport: "Bóng rổ",
-    count: 5,
-    image:
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7K8JLwJB8BB5jd5kVpEdOgshG3Qum9SaxY3l0Kgok_cqnuqFIlC3VzbG8&s=10",
-  },
-];
+const PAGE_SIZE = 6;
 
 export default function FieldPage() {
+  const [fields, setFields] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [keyword, setKeyword] = useState("");
+  const [sport, setSport] = useState("all");
+  const [city, setCity] = useState("all");
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await fetchFields();
+        setFields(data);
+      } catch {
+        setFields([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const sports = useMemo(() => {
+    const s = new Set(fields.map((f) => f.sportLabel));
+    return ["all", ...Array.from(s)];
+  }, [fields]);
+
+  const cities = useMemo(() => {
+    const s = new Set(fields.map((f) => f.city));
+    return ["all", ...Array.from(s)];
+  }, [fields]);
+
+  const filtered = useMemo(() => {
+    return fields.filter((f) => {
+      const kw = keyword.trim().toLowerCase();
+      const matchKw =
+        !kw ||
+        f.name.toLowerCase().includes(kw) ||
+        f.address.toLowerCase().includes(kw);
+      const matchSport = sport === "all" || f.sportLabel === sport;
+      const matchCity = city === "all" || f.city === city;
+      return matchKw && matchSport && matchCity;
+    });
+  }, [fields, keyword, sport, city]);
+
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   return (
-    <Layout style={{ background: "#f6f7fb" }}>
-
-      <div className="hero">
-
-        <Content className="hero-content">
-
-          <Text style={{ color: "#fff" }}>
-            Trang chủ / Tìm sân
-          </Text>
-
-          <Title style={{ color: "#fff", marginTop: 10 }}>
-            🔍 Tìm sân bóng rổ thể thao
-          </Title>
-
-          <Row gutter={16} style={{ marginTop: 30 }}>
-            <Col span={8}>
-              <Input
-                size="large"
-                prefix={<SearchOutlined />}
-                placeholder="Tên sân..."
-              />
-            </Col>
-
-            <Col span={4}>
-              <Button
-                type="primary"
-                size="large"
-                block
-              >
-                Tìm ngay
-              </Button>
-            </Col>
-          </Row>
-
-        </Content>
-
+    <div className="min-h-screen bg-gray-50">
+      <div className="bg-emerald-900 text-white">
+        <div className="max-w-7xl mx-auto px-4 pt-8 pb-12">
+          <div className="text-xs text-emerald-200 mb-2">
+            <Link to="/" className="hover:underline">
+              Trang chủ
+            </Link>{" "}
+            › Danh Sách
+          </div>
+          <h1 className="text-3xl font-bold mb-2"> Tìm sân thể thao</h1>
+          <p className="text-emerald-200">
+            Tìm thấy <strong className="text-white">{filtered.length}</strong> cơ sở phù hợp
+          </p>
+        </div>
       </div>
 
-      <Content style={{ padding: 30 }}>
+      <div className="max-w-7xl mx-auto px-4 -mt-6 mb-8">
+        <div className="bg-white rounded-xl shadow-md p-4 flex flex-col md:flex-row gap-3">
+          <Input
+            size="large"
+            prefix={<SearchOutlined />}
+            placeholder="Tên sân, khu vực..."
+            value={keyword}
+            onChange={(e) => {
+              setKeyword(e.target.value);
+              setPage(1);
+            }}
+            className="flex-1"
+          />
+          <Select
+            size="large"
+            value={sport}
+            onChange={(v) => {
+              setSport(v);
+              setPage(1);
+            }}
+            className="md:w-48"
+            options={sports.map((s) => ({
+              value: s,
+              label: s === "all" ? "Tất cả loại sân" : s,
+            }))}
+          />
+          <Select
+            size="large"
+            value={city}
+            onChange={(v) => {
+              setCity(v);
+              setPage(1);
+            }}
+            className="md:w-48"
+            options={cities.map((c) => ({
+              value: c,
+              label: c === "all" ? "Tất cả tỉnh" : c,
+            }))}
+          />
+        </div>
+      </div>
 
-        <Row gutter={20}>
-
-          <Col span={6}>
-
-          </Col>
-
-
-          <Col span={18}>
-
-            <Card
-              extra={
-                <Radio.Group defaultValue="list">
-                  <Radio.Button value="list">
-                    <BarsOutlined />
-                  </Radio.Button>
-
-                  <Radio.Button value="grid">
-                    <AppstoreOutlined />
-                  </Radio.Button>
-                </Radio.Group>
-              }
-            >
-
-              {stadiums.map((item) => (
-
-                <Card
-                  key={item.id}
-                  style={{ marginBottom: 20 }}
-                >
-
-                  <Row gutter={20} align="middle">
-
-                    <Col span={5}>
-
-                      <img
-                        src={item.image}
-                        alt=""
-                        style={{
-                          width: "100%",
-                          height: 130,
-                          objectFit: "cover",
-                          borderRadius: 8,
-                        }}
-                      />
-
-                    </Col>
-
-                    <Col span={15}>
-
-                      <Title level={4}>
-                        {item.name}
-                      </Title>
-
-                      <p>
-                        <EnvironmentOutlined />{" "}
-                        {item.location}
-                      </p>
-
-                      <Tag color="green">
-                        {item.sport}
-                      </Tag>
-
-                    </Col>
-
-                    <Col span={4}>
-
-                      <Button
-                        type="primary"
-                        style={{ marginBottom: 10 }}
-                        block
-                      >
-                        Đặt sân
-                      </Button>
-
-                      <Button block>
-                        Chi tiết
-                      </Button>
-
-                    </Col>
-
-                  </Row>
-
-                </Card>
-
-              ))}
-
+      <div className="max-w-7xl mx-auto px-4 pb-16">
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <Spin size="large" />
+          </div>
+        ) : paginated.length === 0 ? (
+          <div className="bg-white rounded-xl p-12 text-center text-gray-400">
+            Không tìm thấy cơ sở phù hợp
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {paginated.map((item) => (
+              <div
+                key={item.id}
+                className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col sm:flex-row gap-4"
+              >
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  className="w-full sm:w-40 h-28 object-cover rounded-lg"
+                />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-lg text-gray-900">{item.name}</h3>
+                  <p className="text-sm text-gray-500 flex items-center mt-1">
+                    <EnvironmentOutlined className="mr-1 text-emerald-600" />
+                    {item.address}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <span className="text-xs font-semibold bg-emerald-50 text-emerald-700 px-2 py-1 rounded">
+                      {item.sportLabel}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      {item.courtCount} sân · từ{" "}
+                      {item.priceFrom?.toLocaleString("vi-VN")}đ/h
+                    </span>
+                  </div>
+                </div>
+                <div className="flex sm:flex-col gap-2 justify-center">
+                  <Link
+                    to={`/detail/${item.id}`}
+                    className="border border-emerald-600 text-emerald-600 text-sm font-semibold rounded-md px-4 py-2 text-center hover:bg-emerald-50"
+                  >
+                    Chi tiết
+                  </Link>
+                  <Link
+                    to={`/booking?fieldId=${item.id}`}
+                    className="bg-emerald-600 text-white text-sm font-semibold rounded-md px-4 py-2 text-center hover:bg-emerald-700"
+                  >
+                    Đặt sân
+                  </Link>
+                </div>
+              </div>
+            ))}
+            <div className="flex justify-center pt-6">
               <Pagination
-                current={1}
-                total={438}
-                pageSize={20}
-                style={{
-                  textAlign: "center",
-                  marginTop: 20,
-                }}
+                current={page}
+                total={filtered.length}
+                pageSize={PAGE_SIZE}
+                onChange={setPage}
               />
-
-            </Card>
-
-          </Col>
-
-        </Row>
-
-      </Content>
-    </Layout>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

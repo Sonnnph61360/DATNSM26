@@ -3,7 +3,6 @@ import { Toaster } from "react-hot-toast";
 import Home from "./pages/Home";
 import Detail from "./pages/Detail";
 import Booking from "./pages/Booking";
-import List from "./pages/List";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Blog from "./pages/Blog";
@@ -23,7 +22,6 @@ function App() {
           <Route index element={<Home />} />
           <Route path="detail" element={<Detail />} />
           <Route path="booking" element={<Booking />} />
-          <Route path="tim-san" element={<List />} />
           <Route path="fields" element={<FieldPage />} />
           <Route path="blog" element={<Blog />} />
           <Route path="login" element={<Login />} />
