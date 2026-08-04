@@ -28,6 +28,7 @@ function App() {
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
           <Route path="ban-do" element={<MapPage />} />
+          <Route path="detail/:id" element={<Detail />} />
         </Route>
 
         <Route path="/admin" element={<AdminLayout />}>
