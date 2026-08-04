@@ -1,0 +1,143 @@
+import axios from "axios";
+import { cachedGet, invalidateApiCache } from "./apiCache";
+
+export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
+export const api = axios.create({
+  baseURL: API_URL,
+  headers: { "Content-Type": "application/json" },
+});
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+export function formatCurrency(value: number) {
+  return value.toLocaleString("vi-VN") + "đ";
+}
+
+export const TIME_SLOTS = [
+  "06:00", "07:00", "08:00", "09:00", "10:00", "11:00",
+  "12:00", "13:00", "14:00", "15:00", "16:00", "17:00",
+  "18:00", "19:00", "20:00", "21:00",
+];
+
+export type Field = {
+  id: number;
+  name: string;
+  sport: string;
+  sportLabel: string;
+  address: string;
+  city: string;
+  phone: string;
+  openTime: string;
+  closeTime: string;
+  description: string;
+  image: string;
+  courtCount: number;
+  priceFrom: number;
+  status: string;
+  /** Tọa độ bản đồ — tự chỉnh khi đổi địa chỉ */
+  lat?: number;
+  lng?: number;
+};
+
+export type Court = {
+  id: number;
+  fieldId: number;
+  name: string;
+  type: string;
+  price: number;
+  status: string;
+  capacity: number;
+};
+
+export type Booking = {
+  id: number;
+  fieldId: number;
+  courtId: number;
+  fieldName: string;
+  court: string;
+  date: string;
+  time: string;
+  duration: number;
+  total: number;
+  customer: {
+    fullName: string;
+    phone: string;
+    note?: string;
+    userId?: number;
+    email?: string;
+  };
+  paymentMethod: string;
+  paymentStatus: string;
+  status: string;
+  createdAt: string;
+};
+
+/** Check if two time ranges overlap (time as HH:mm, duration in hours) */
+export function isSlotConflict(
+  bookedTime: string,
+  bookedDuration: number,
+  newTime: string,
+  newDuration: number
+): boolean {
+  const toMin = (t: string) => {
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + m;
+  };
+  const a0 = toMin(bookedTime);
+  const a1 = a0 + bookedDuration * 60;
+  const b0 = toMin(newTime);
+  const b1 = b0 + newDuration * 60;
+  return a0 < b1 && b0 < a1;
+}
+
+export async function getBookedSlots(courtId: number, date: string) {
+  // Dùng 1 request theo ngày (cache) rồi lọc court — tránh N request cho N sân
+  const list = await getBookingsByDate(date);
+  return list.filter((b) => b.courtId === courtId && b.status !== "cancelled");
+}
+
+/** Lấy bookings theo ngày — cache 15s, gộp request trùng */
+export async function getBookingsByDate(date: string) {
+  return cachedGet(
+    `bookings:date:${date}`,
+    async () => {
+      const res = await api.get<Booking[]>("/bookings", { params: { date } });
+      return res.data;
+    },
+    15_000
+  );
+}
+
+export async function fetchFields(force = false) {
+  if (force) invalidateApiCache("fields");
+  return cachedGet(
+    "fields:all",
+    async () => {
+      const res = await api.get<Field[]>("/fields");
+      return res.data;
+    },
+    30_000
+  );
+}
+
+export async function fetchCourts(params?: { fieldId?: number | string; status?: string }, force = false) {
+  const key = `courts:${params?.fieldId ?? "all"}:${params?.status ?? "all"}`;
+  if (force) invalidateApiCache(key);
+  return cachedGet(
+    key,
+    async () => {
+      const res = await api.get<Court[]>("/courts", { params });
+      return res.data;
+    },
+    30_000
+  );
+}
+
+export { invalidateApiCache };

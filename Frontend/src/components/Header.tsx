@@ -22,8 +22,7 @@ export default function Header() {
 
                     <nav className="hidden lg:flex items-center space-x-6 text-sm font-medium text-gray-700">
                         <Link to="/fields" className="flex items-center hover:text-blue-600 transition-colors">
-                            <Search className="w-4 h-4 mr-1.5" />
-                            Tìm sân
+                            Danh Sách
                         </Link>
                         <Link to="#" className="flex items-center hover:text-blue-600 transition-colors">
                             <Map className="w-4 h-4 mr-1.5" />
