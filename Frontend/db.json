@@ -18,162 +18,162 @@
     }
   ],
   "fields": [
-  {
-    "id": 1,
-    "name": "Sân bóng rổ Hoàng Mai",
-    "sport": "basketball-5x5",
-    "sportLabel": "Bóng rổ 5x5",
-    "address": "Hoàng Mai, Hà Nội",
-    "city": "Hà Nội",
-    "phone": "0987000001",
-    "openTime": "06:00",
-    "closeTime": "22:00",
-    "description": "Sân bóng rổ tiêu chuẩn 5x5, có đèn chiếu sáng và khán đài.",
-    "image": "https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1200&q=80",
-    "courtCount": 2,
-    "priceFrom": 300000,
-    "status": "active",
-    "lat": 20.983,
-    "lng": 105.864
-  },
-  {
-    "id": 2,
-    "name": "Basket Arena Cầu Giấy",
-    "sport": "basketball-3x3",
-    "sportLabel": "Bóng rổ 3x3",
-    "address": "Cầu Giấy, Hà Nội",
-    "city": "Hà Nội",
-    "phone": "0987000002",
-    "openTime": "06:00",
-    "closeTime": "23:00",
-    "description": "Sân bóng rổ 3x3 ngoài trời.",
-    "image": "https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=1200&q=80",
-    "courtCount": 3,
-    "priceFrom": 180000,
-    "status": "active",
-    "lat": 21.036,
-    "lng": 105.79
-  },
-  {
-    "id": 3,
-    "name": "Saigon Basketball Center",
-    "sport": "basketball-5x5",
-    "sportLabel": "Bóng rổ 5x5",
-    "address": "Quận 7, TP. Hồ Chí Minh",
-    "city": "Hồ Chí Minh",
-    "phone": "0987000003",
-    "openTime": "07:00",
-    "closeTime": "22:00",
-    "description": "Trung tâm bóng rổ trong nhà đạt chuẩn thi đấu.",
-    "image": "https://images.unsplash.com/photo-1518063319789-7217e6706b04?auto=format&fit=crop&w=1200&q=80",
-    "courtCount": 2,
-    "priceFrom": 350000,
-    "status": "active",
-    "lat": 10.73,
-    "lng": 106.72
-  },
-  {
-    "id": 4,
-    "name": "Đại học Thể thao",
-    "sport": "basketball-3x3",
-    "sportLabel": "Bóng rổ 3x3",
-    "address": "Thủ Đức, TP. Hồ Chí Minh",
-    "city": "Hồ Chí Minh",
-    "phone": "0987000004",
-    "openTime": "06:00",
-    "closeTime": "21:00",
-    "description": "Cụm sân bóng rổ ngoài trời dành cho luyện tập.",
-    "image": "https://images.unsplash.com/photo-1504450758481-7338eba7524a?auto=format&fit=crop&w=1200&q=80",
-    "courtCount": 4,
-    "priceFrom": 150000,
-    "status": "active",
-    "lat": 10.85,
-    "lng": 106.77
-  }
+    {
+      "id": 1,
+      "name": "Sân bóng rổ Hoàng Mai",
+      "sport": "basketball-5x5",
+      "sportLabel": "Bóng rổ 5x5",
+      "address": "Hoàng Mai, Hà Nội",
+      "city": "Hà Nội",
+      "phone": "0987000001",
+      "openTime": "06:00",
+      "closeTime": "22:00",
+      "description": "Sân bóng rổ tiêu chuẩn 5x5, có đèn chiếu sáng và khán đài.",
+      "image": "https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1200&q=80",
+      "courtCount": 2,
+      "priceFrom": 300000,
+      "status": "active",
+      "lat": 20.983,
+      "lng": 105.864
+    },
+    {
+      "id": 2,
+      "name": "Basket Arena Cầu Giấy",
+      "sport": "basketball-3x3",
+      "sportLabel": "Bóng rổ 3x3",
+      "address": "Cầu Giấy, Hà Nội",
+      "city": "Hà Nội",
+      "phone": "0987000002",
+      "openTime": "06:00",
+      "closeTime": "23:00",
+      "description": "Sân bóng rổ 3x3 ngoài trời.",
+      "image": "https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=1200&q=80",
+      "courtCount": 3,
+      "priceFrom": 180000,
+      "status": "active",
+      "lat": 21.036,
+      "lng": 105.79
+    },
+    {
+      "id": 3,
+      "name": "Saigon Basketball Center",
+      "sport": "basketball-5x5",
+      "sportLabel": "Bóng rổ 5x5",
+      "address": "Quận 7, TP. Hồ Chí Minh",
+      "city": "Hồ Chí Minh",
+      "phone": "0987000003",
+      "openTime": "07:00",
+      "closeTime": "22:00",
+      "description": "Trung tâm bóng rổ trong nhà đạt chuẩn thi đấu.",
+      "image": "https://images.unsplash.com/photo-1518063319789-7217e6706b04?auto=format&fit=crop&w=1200&q=80",
+      "courtCount": 2,
+      "priceFrom": 350000,
+      "status": "active",
+      "lat": 10.73,
+      "lng": 106.72
+    },
+    {
+      "id": 4,
+      "name": "Đại học Thể thao",
+      "sport": "basketball-3x3",
+      "sportLabel": "Bóng rổ 3x3",
+      "address": "Thủ Đức, TP. Hồ Chí Minh",
+      "city": "Hồ Chí Minh",
+      "phone": "0987000004",
+      "openTime": "06:00",
+      "closeTime": "21:00",
+      "description": "Cụm sân bóng rổ ngoài trời dành cho luyện tập.",
+      "image": "https://images.unsplash.com/photo-1504450758481-7338eba7524a?auto=format&fit=crop&w=1200&q=80",
+      "courtCount": 4,
+      "priceFrom": 150000,
+      "status": "active",
+      "lat": 10.85,
+      "lng": 106.77
+    }
   ],
   "courts": [
-  {
-    "id": 1,
-    "fieldId": 1,
-    "name": "Sân 5x5 A",
-    "type": "Bóng rổ 5x5",
-    "price": 300000,
-    "status": "active",
-    "capacity": 10
-  },
-  {
-    "id": 2,
-    "fieldId": 1,
-    "name": "Sân 5x5 B",
-    "type": "Bóng rổ 5x5",
-    "price": 300000,
-    "status": "active",
-    "capacity": 10
-  },
-  {
-    "id": 3,
-    "fieldId": 2,
-    "name": "Sân 3x3 A",
-    "type": "Bóng rổ 3x3",
-    "price": 180000,
-    "status": "active",
-    "capacity": 6
-  },
-  {
-    "id": 4,
-    "fieldId": 2,
-    "name": "Sân 3x3 B",
-    "type": "Bóng rổ 3x3",
-    "price": 180000,
-    "status": "active",
-    "capacity": 6
-  },
-  {
-    "id": 5,
-    "fieldId": 2,
-    "name": "Sân 3x3 C",
-    "type": "Bóng rổ 3x3",
-    "price": 180000,
-    "status": "maintenance",
-    "capacity": 6
-  },
-  {
-    "id": 6,
-    "fieldId": 3,
-    "name": "Sân Trung tâm",
-    "type": "Bóng rổ 5x5",
-    "price": 350000,
-    "status": "active",
-    "capacity": 10
-  },
-  {
-    "id": 7,
-    "fieldId": 3,
-    "name": "Sân Phụ",
-    "type": "Bóng rổ 5x5",
-    "price": 320000,
-    "status": "active",
-    "capacity": 10
-  },
-  {
-    "id": 8,
-    "fieldId": 4,
-    "name": "Sân 3x3 D",
-    "type": "Bóng rổ 3x3",
-    "price": 150000,
-    "status": "active",
-    "capacity": 6
-  },
-  {
-    "id": 9,
-    "fieldId": 4,
-    "name": "Sân 3x3 E",
-    "type": "Bóng rổ 3x3",
-    "price": 150000,
-    "status": "active",
-    "capacity": 6
-  }
-],
+    {
+      "id": 1,
+      "fieldId": 1,
+      "name": "Sân 5x5 A",
+      "type": "Bóng rổ 5x5",
+      "price": 300000,
+      "status": "active",
+      "capacity": 10
+    },
+    {
+      "id": 2,
+      "fieldId": 1,
+      "name": "Sân 5x5 B",
+      "type": "Bóng rổ 5x5",
+      "price": 300000,
+      "status": "active",
+      "capacity": 10
+    },
+    {
+      "id": 3,
+      "fieldId": 2,
+      "name": "Sân 3x3 A",
+      "type": "Bóng rổ 3x3",
+      "price": 180000,
+      "status": "active",
+      "capacity": 6
+    },
+    {
+      "id": 4,
+      "fieldId": 2,
+      "name": "Sân 3x3 B",
+      "type": "Bóng rổ 3x3",
+      "price": 180000,
+      "status": "active",
+      "capacity": 6
+    },
+    {
+      "id": 5,
+      "fieldId": 2,
+      "name": "Sân 3x3 C",
+      "type": "Bóng rổ 3x3",
+      "price": 180000,
+      "status": "maintenance",
+      "capacity": 6
+    },
+    {
+      "id": 6,
+      "fieldId": 3,
+      "name": "Sân Trung tâm",
+      "type": "Bóng rổ 5x5",
+      "price": 350000,
+      "status": "active",
+      "capacity": 10
+    },
+    {
+      "id": 7,
+      "fieldId": 3,
+      "name": "Sân Phụ",
+      "type": "Bóng rổ 5x5",
+      "price": 320000,
+      "status": "active",
+      "capacity": 10
+    },
+    {
+      "id": 8,
+      "fieldId": 4,
+      "name": "Sân 3x3 D",
+      "type": "Bóng rổ 3x3",
+      "price": 150000,
+      "status": "active",
+      "capacity": 6
+    },
+    {
+      "id": 9,
+      "fieldId": 4,
+      "name": "Sân 3x3 E",
+      "type": "Bóng rổ 3x3",
+      "price": 150000,
+      "status": "active",
+      "capacity": 6
+    }
+  ],
   "bookings": [
     {
       "id": 1,
@@ -218,6 +218,23 @@
       "paymentStatus": "paid",
       "status": "confirmed",
       "createdAt": "2026-08-01T06:31:17.367Z"
+    },
+    {
+      "fieldName": "002 PB Club",
+      "court": "Sân PB 1",
+      "date": "2026-09-08",
+      "time": "07:00",
+      "duration": 2,
+      "total": 260000,
+      "customer": {
+        "fullName": "Tú Nguyễn Thanh",
+        "phone": "0869338010",
+        "note": "dsadsad"
+      },
+      "paymentMethod": "transfer",
+      "status": "pending",
+      "createdAt": "2026-08-04T18:36:12.145Z",
+      "id": 3
     }
   ]
 }
