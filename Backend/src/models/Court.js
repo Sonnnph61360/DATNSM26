@@ -2,47 +2,15 @@ import mongoose from "mongoose";
 
 const courtSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    type: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    price: {
-      type: Number,
-      required: true,
-    },
-    status: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    capacity: {
-      type: Number,
-      default: 0,
-    }
+    id: { type: Number, unique: true, required: true },
+    fieldId: { type: Number, required: true, index: true },
+    name: { type: String, required: true, trim: true },
+    type: { type: String, default: "Basketball" },
+    price: { type: Number, required: true, default: 0 },
+    status: { type: String, default: "active" },
+    capacity: { type: Number, default: 4 },
   },
-  {
-    timestamps: true,
-    versionKey: false,
-    toJSON: {
-      virtuals: true,
-      transform: (doc, ret) => {
-        ret.id = ret._id?.toString();
-        delete ret._id;
-        return ret;
-      },
-    },
-    toObject: {
-      virtuals: true,
-    },
-  }
+  { timestamps: true, versionKey: false }
 );
 
-const Court = mongoose.model("Court", courtSchema);
-
-export default Court;
+export default mongoose.model("Court", courtSchema);
