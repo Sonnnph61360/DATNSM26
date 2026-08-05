@@ -14,6 +14,9 @@ interface Court {
 }
 
 export default function Courts() {
+
+
+
     const [data, setData] = useState<Court[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -24,8 +27,12 @@ export default function Courts() {
 
     const fetchCourts = async () => {
         try {
-            const res = await axios.get(`${API_URL}/courts`);
-            setData(res.data);
+            const res2 = await axios.get("http://localhost:3000/api/courts")
+            console.log(res2);
+            setData(res2.data);
+
+            // const res = await axios.get(`${API_URL}/courts`);
+            // setData(res.data);
         } catch (error) {
             message.error("Không thể tải dữ liệu sân, JSON Server có đang chạy không?");
         } finally {
@@ -85,26 +92,26 @@ export default function Courts() {
             key: "name",
             render: (text: string) => <strong className="text-gray-800">{text}</strong>
         },
-        {
-            title: "Bộ môn",
-            dataIndex: "type",
-            key: "type",
-            render: (type: string) => <Tag color="blue">{type}</Tag>
-        },
-        {
-            title: "Giá thuê / Giờ",
-            dataIndex: "price",
-            key: "price",
-            render: (price: number) => <span className="text-green-600 font-bold">{price.toLocaleString()}đ</span>
-        },
-        {
-            title: "Tình trạng",
-            dataIndex: "status",
-            key: "status",
-            render: (status: string) => status === "active"
-                ? <Tag color="green">Đang rảnh</Tag>
-                : <Tag color="red">Bảo trì</Tag>
-        },
+        // {
+        //     title: "Bộ môn",
+        //     dataIndex: "type",
+        //     key: "type",
+        //     render: (type: string) => <Tag color="blue">{type}</Tag>
+        // },
+        // {
+        //     title: "Giá thuê / Giờ",
+        //     dataIndex: "price",
+        //     key: "price",
+        //     render: (price: number) => <span className="text-green-600 font-bold">{price.toLocaleString()}đ</span>
+        // },
+        // {
+        //     title: "Tình trạng",
+        //     dataIndex: "status",
+        //     key: "status",
+        //     render: (status: string) => status === "active"
+        //         ? <Tag color="green">Đang rảnh</Tag>
+        //         : <Tag color="red">Bảo trì</Tag>
+        // },
         {
             title: "Hành động",
             key: "action",
