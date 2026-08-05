@@ -8,7 +8,7 @@ import Register from "./pages/Register";
 import Blog from "./pages/Blog";
 import FieldPage from "./pages/FieldPage";
 import AdminLayout from "./layouts/AdminLayout";
-import AdminBookings from "./pages/AdminBookings";
+import AdminBookings from "./pages/Admin/AdminBookings";
 import Dashboard from "./pages/admin/Dashboard";
 import Courts from "./pages/admin/Courts";
 import CalendarPage from "./pages/admin/CalendarPage";
