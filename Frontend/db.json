@@ -15,6 +15,13 @@
       "fullName": "hoang",
       "phone": "0363715020",
       "role": "user"
+    },
+    {
+      "email": "nguyentu0813@gmail.com",
+      "password": "$2a$10$P.I5PYTBPfzUF6qcv6OWwOry3n9tNFPBnddvAPDpd.YpJzpuLAq92",
+      "fullName": "Tú Nguyễn Thanh",
+      "phone": "0869338010",
+      "id": 3
     }
   ],
   "fields": [
