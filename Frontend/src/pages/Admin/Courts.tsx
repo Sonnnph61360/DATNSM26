@@ -46,7 +46,9 @@ export default function Courts() {
 
     const handleDelete = async (id: number) => {
         try {
-            await axios.delete(`${API_URL}/courts/${id}`);
+            const res3 = await axios.delete(`http://localhost:3000/api/courts/${id}`);
+            console.log(res3);
+            await fetchCourts(); 
             setData(data.filter(item => item.id !== id));
             message.success("Xoá sân thành công");
         } catch (error) {
