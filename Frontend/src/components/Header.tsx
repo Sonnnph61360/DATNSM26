@@ -25,7 +25,7 @@ export default function Header() {
                             Danh Sách
                         </Link>
                         <Link
-                            to="/map"
+                            to="/ban-do"
                             className="flex items-center hover:text-blue-600 transition-colors"
                         >
                             <Map className="w-4 h-4 mr-1.5" />
