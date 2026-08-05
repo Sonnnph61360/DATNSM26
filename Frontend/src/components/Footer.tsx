@@ -31,9 +31,7 @@ export default function Footer() {
                         <ul className="space-y-3">
                             <li><Link to="#" className="hover:text-white transition">Tìm sân</Link></li>
                             <li><Link to="#" className="hover:text-white transition">Bản đồ</Link></li>
-                            <li><Link to="#" className="hover:text-white transition">Sân bóng đá</Link></li>
-                            <li><Link to="#" className="hover:text-white transition">Sân tennis</Link></li>
-                            <li><Link to="#" className="hover:text-white transition">Sân cầu lông</Link></li>
+                            <li><Link to="#" className="hover:text-white transition">Blog</Link></li>
                         </ul>
                     </div>
 

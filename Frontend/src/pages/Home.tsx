@@ -110,7 +110,6 @@ export default function Home() {
               <h2 className="text-3xl font-extrabold text-gray-900 mb-2">
                 Cơ sở thể thao nổi bật
               </h2>
-              <p className="text-gray-500">Dữ liệu lấy từ API (db.json)</p>
             </div>
             <Link
               to="/fields"
