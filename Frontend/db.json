@@ -9,14 +9,6 @@
       "role": "admin"
     },
     {
-      "id": 2,
-      "email": "hoangdtph4@gmail.com",
-      "password": "$2a$10$dj0KyjxMtLIE61E8PioNaej8aygSNZurVaeaoNcWR.goLZQ7SXbpG",
-      "fullName": "hoang",
-      "phone": "0363715020",
-      "role": "user"
-    },
-    {
       "email": "nguyentu0813@gmail.com",
       "password": "$2a$10$P.I5PYTBPfzUF6qcv6OWwOry3n9tNFPBnddvAPDpd.YpJzpuLAq92",
       "fullName": "Tú Nguyễn Thanh",
@@ -182,50 +174,6 @@
     }
   ],
   "bookings": [
-    {
-      "id": 1,
-      "fieldId": 1,
-      "courtId": 1,
-      "fieldName": "002 PB Club",
-      "court": "Sân PB 1",
-      "date": "2026-08-03",
-      "time": "17:00",
-      "duration": 1,
-      "total": 130000,
-      "customer": {
-        "fullName": "hoang",
-        "phone": "0363715020",
-        "note": "ok",
-        "userId": 2,
-        "email": "hoangdtph4@gmail.com"
-      },
-      "paymentMethod": "cash",
-      "paymentStatus": "unpaid",
-      "status": "confirmed",
-      "createdAt": "2026-08-01T06:28:33.006Z"
-    },
-    {
-      "id": 2,
-      "fieldId": 1,
-      "courtId": 1,
-      "fieldName": "002 PB Club",
-      "court": "Sân PB 1",
-      "date": "2026-08-03",
-      "time": "21:00",
-      "duration": 1,
-      "total": 130000,
-      "customer": {
-        "fullName": "hoang",
-        "phone": "0363715020",
-        "note": "",
-        "userId": 2,
-        "email": "hoangdtph4@gmail.com"
-      },
-      "paymentMethod": "transfer",
-      "paymentStatus": "paid",
-      "status": "confirmed",
-      "createdAt": "2026-08-01T06:31:17.367Z"
-    },
     {
       "fieldName": "002 PB Club",
       "court": "Sân PB 1",
