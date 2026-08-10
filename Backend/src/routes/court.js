@@ -1,11 +1,18 @@
 import { Router } from "express";
-import { getCourts, addCourt, updateCourt, deleteCourt } from "../controllers/court";
+import {
+  getCourts,
+  getCourt,
+  createCourt,
+  updateCourt,
+  deleteCourt,
+} from "../controllers/court";
 
-const courtRouter = Router();
+const router = Router();
+router.get("/", getCourts);
+router.get("/:id", getCourt);
+router.post("/", createCourt);
+router.put("/:id", updateCourt);
+router.patch("/:id", updateCourt);
+router.delete("/:id", deleteCourt);
 
-courtRouter.get("/", getCourts);
-courtRouter.post("/", addCourt);
-courtRouter.put("/:id", updateCourt);
-courtRouter.delete("/:id", deleteCourt);
-
-export default courtRouter;
+export default router;
