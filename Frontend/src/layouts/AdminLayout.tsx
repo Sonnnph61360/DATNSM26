@@ -31,7 +31,7 @@ export default function AdminLayout() {
              {
                 key: "/admin/courts",
                 icon: <MapPin size={18} />,
-                label: <Link to="/admin/courts">Quabr lí sân bãi</Link>,
+                label: <Link to="/admin/courts">Quản lí sân bãi</Link>,
                  },
         
           
