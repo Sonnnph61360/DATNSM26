@@ -1,75 +1,142 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Map, BookOpen, LayoutGrid, ChevronDown, LogIn, Store, LogOut, User as UserIcon } from "lucide-react";
+import {
+  Search,
+  Map,
+  BookOpen,
+  LogIn,
+  LogOut,
+  User,
+  Shield,
+  CalendarDays,
+} from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
+import toast from "react-hot-toast";
 
 export default function Header() {
-    const navigate = useNavigate();
-    const userString = localStorage.getItem("user");
-    const user = userString ? JSON.parse(userString) : null;
+  const { user, loggedIn, isAdmin, logout } = useAuth();
+  const navigate = useNavigate();
 
-    const handleLogout = () => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        navigate("/login");
-    };
-    return (
-        <header className="bg-white shadow-sm sticky top-0 z-50">
-            <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
-                <div className="flex items-center space-x-12">
-                    <Link to="/" className="text-2xl font-extrabold tracking-tight flex items-center">
-                        <span className="text-blue-700 uppercase tracking-widest mr-1">Golden</span>
-                        <span className="text-yellow-500 uppercase tracking-widest">State</span>
-                    </Link>
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
 
-                    <nav className="hidden lg:flex items-center space-x-6 text-sm font-medium text-gray-700">
-                        <Link to="/fields" className="flex items-center hover:text-blue-600 transition-colors">
-                            Danh Sách
-                        </Link>
-                        <Link
-                            to="/ban-do"
-                            className="flex items-center hover:text-blue-600 transition-colors"
-                        >
-                            <Map className="w-4 h-4 mr-1.5" />
-                            Bản đồ
-                        </Link>
-                        <Link to="/blog" className="flex items-center hover:text-blue-600 transition-colors">
-                            <BookOpen className="w-4 h-4 mr-1.5" />
-                            Blog
-                        </Link>
-                        <div className="flex items-center cursor-pointer hover:text-blue-600 transition-colors">
-                            Loại sân
-                            <ChevronDown className="w-4 h-4 ml-1" />
-                        </div>
-                    </nav>
-                </div>
+  /** Nút kiểm tra quyền admin → vào /admin nếu đủ quyền */
+  const goAdmin = () => {
+    if (!loggedIn) {
+      toast.error("Vui lòng đăng nhập trước");
+      navigate("/login", { state: { from: "/admin" } });
+      return;
+    }
+    if (isAdmin) {
+      navigate("/admin");
+    } else {
+      toast.error("Tài khoản của bạn không có quyền Admin");
+    }
+  };
 
-                <div className="flex items-center space-x-4">
-                    {user ? (
-                        <div className="flex items-center space-x-4">
-                            <span className="text-sm font-medium text-gray-700 flex items-center">
-                                <UserIcon className="w-4 h-4 mr-2" />
-                                Xin chào, {user.fullName || user.email}
-                            </span>
-                            <button onClick={handleLogout} className="text-sm font-medium text-red-500 hover:text-red-700 transition flex items-center">
-                                <LogOut className="w-4 h-4 mr-1" /> Thoát
-                            </button>
-                        </div>
-                    ) : (
-                        <>
-                            <Link to="/login" className="text-sm font-medium text-gray-700 flex items-center hover:text-blue-600 transition-colors">
-                                <LogIn className="w-4 h-4 mr-1.5" />
-                                Đăng nhập
-                            </Link>
-                            <Link to="/register" className="text-sm font-medium text-gray-700 hover:text-green-600 transition-colors">
-                                Đăng ký
-                            </Link>
-                        </>
-                    )}
-                    <Link to="#" className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold flex items-center shadow-sm transition-colors cursor-pointer">
-                        <Store className="w-4 h-4 mr-2" />
-                        Chủ Sân
-                    </Link>
-                </div>
-            </div>
-        </header>
-    );
+  return (
+    <header className="bg-white shadow-sm sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
+        <div className="flex items-center space-x-8">
+          <Link
+            to="/"
+            className="text-2xl font-extrabold tracking-tight flex items-center"
+          >
+            <span className="text-blue-700 uppercase tracking-widest mr-1">
+              Golden
+            </span>
+            <span className="text-yellow-500 uppercase tracking-widest">
+              State
+            </span>
+          </Link>
+
+          <nav className="hidden lg:flex items-center space-x-5 text-sm font-medium text-gray-700">
+            <Link
+              to="/fields"
+              className="flex items-center hover:text-blue-600 transition-colors"
+            >
+              Danh Sách
+            </Link>
+            <Link
+              to="/map"
+              className="flex items-center hover:text-blue-600 transition-colors"
+            >
+              <Map className="w-4 h-4 mr-1.5" />
+              Bản đồ
+            </Link>
+            <Link
+              to="/blog"
+              className="flex items-center hover:text-blue-600 transition-colors"
+            >
+              <BookOpen className="w-4 h-4 mr-1.5" />
+              Blog
+            </Link>
+          </nav>
+        </div>
+
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          {loggedIn ? (
+            <>
+              <Link
+                to="/my-bookings"
+                className="hidden sm:flex items-center text-sm font-medium text-gray-700 hover:text-blue-600"
+              >
+                <CalendarDays className="w-4 h-4 mr-1.5" />
+                Đơn của tôi
+              </Link>
+
+              {/* Nút Admin: luôn hiện khi đã login; chỉ vào được nếu có quyền */}
+              <button
+                type="button"
+                onClick={goAdmin}
+                className={`flex items-center text-sm font-semibold px-3 py-1.5 rounded-lg transition ${
+                  isAdmin
+                    ? "text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200"
+                    : "text-gray-500 bg-gray-50 hover:bg-gray-100 border border-gray-200"
+                }`}
+                title={isAdmin ? "Vào trang quản trị" : "Kiểm tra quyền Admin"}
+              >
+                <Shield className="w-4 h-4 mr-1.5" />
+                <span className="hidden sm:inline">
+                  {isAdmin ? "Trang Admin" : "Admin"}
+                </span>
+              </button>
+
+              <div className="flex items-center gap-1.5 text-sm font-medium text-gray-700 max-w-[100px] truncate">
+                <User className="w-4 h-4 text-blue-600 shrink-0" />
+                <span className="hidden md:inline truncate">
+                  {user?.fullName || user?.email}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex items-center text-sm font-medium text-red-600 hover:text-red-700 px-2 py-1.5"
+              >
+                <LogOut className="w-4 h-4 mr-1" />
+                <span className="hidden sm:inline">Đăng xuất</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className="text-sm font-medium text-gray-700 flex items-center hover:text-blue-600 transition-colors"
+              >
+                <LogIn className="w-4 h-4 mr-1.5" />
+                Đăng nhập
+              </Link>
+              <Link
+                to="/register"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-colors"
+              >
+                Đăng ký
+              </Link>
+            </>
+          )}
+        </div>
+      </div>
+    </header>
+  );
 }
