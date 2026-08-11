@@ -17,7 +17,10 @@ api.interceptors.request.use((config) => {
 });
 
 export function formatCurrency(value: number) {
-  return value.toLocaleString("vi-VN") + "đ";
+  if (value == null || Number.isNaN(Number(value))) return "0 ₫";
+  return (
+    Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 0 }) + " ₫"
+  );
 }
 
 export const TIME_SLOTS = [
@@ -141,3 +144,16 @@ export async function fetchCourts(params?: { fieldId?: number | string; status?:
 }
 
 export { invalidateApiCache };
+
+/** Tính giờ kết thúc từ start HH:mm + duration (giờ) */
+export function slotEndTime(start: string, duration: number): string {
+  const [h, m] = start.split(":").map(Number);
+  const total = h * 60 + (m || 0) + Math.round(duration * 60);
+  const eh = Math.floor(total / 60) % 24;
+  const em = total % 60;
+  return `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+}
+
+export function formatSlotRange(start: string, duration: number): string {
+  return `${start} – ${slotEndTime(start, duration)}`;
+}
