@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Loader2, CalendarDays } from "lucide-react";
-import { api, Booking, formatCurrency } from "../lib/api";
+import { api, Booking, formatCurrency, formatSlotRange } from "../lib/api";
+import { formatDateVi } from "../lib/locale";
 import { getUser } from "../lib/auth";
 import toast from "react-hot-toast";
 
@@ -17,25 +18,27 @@ export default function MyBookings() {
   const [loading, setLoading] = useState(true);
   const user = getUser();
 
+  const load = async () => {
+    try {
+      const res = await api.get<Booking[]>("/bookings");
+      const mine = res.data
+        .filter(
+          (b) =>
+            b.customer?.userId === user?.id ||
+            b.customer?.email === user?.email ||
+            b.customer?.phone === user?.phone
+        )
+        .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+      setBookings(mine);
+    } catch {
+      toast.error("Không tải được đơn đặt sân");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await api.get<Booking[]>("/bookings");
-        const mine = res.data
-          .filter(
-            (b) =>
-              b.customer?.userId === user?.id ||
-              b.customer?.email === user?.email ||
-              b.customer?.phone === user?.phone
-          )
-          .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-        setBookings(mine);
-      } catch {
-        toast.error("Không tải được đơn đặt sân");
-      } finally {
-        setLoading(false);
-      }
-    })();
+    load();
   }, [user?.id, user?.email, user?.phone]);
 
   const cancelBooking = async (id: number) => {
@@ -51,6 +54,45 @@ export default function MyBookings() {
     }
   };
 
+  /** Thuê thêm 1 giờ ngay sau khung hiện tại (cùng ngày/sân) */
+  const extendOneHour = async (b: Booking) => {
+    if (!confirm("Thuê thêm 1 giờ ngay sau khung hiện tại?")) return;
+    try {
+      const [h, m] = b.time.split(":").map(Number);
+      const startMin = h * 60 + m + (b.duration || 1) * 60;
+      const nh = Math.floor(startMin / 60) % 24;
+      const nm = startMin % 60;
+      const newTime = `${String(nh).padStart(2, "0")}:${String(nm).padStart(2, "0")}`;
+      const pricePerHour = b.duration ? Math.round(b.total / b.duration) : b.total;
+      await api.post("/bookings", {
+        fieldId: b.fieldId,
+        courtId: b.courtId,
+        fieldName: b.fieldName,
+        court: b.court,
+        date: b.date,
+        time: newTime,
+        duration: 1,
+        total: pricePerHour,
+        customer: {
+          ...b.customer,
+          note: `Thuê thêm sau đơn BK${String(b.id).padStart(6, "0")}`,
+        },
+        paymentMethod: b.paymentMethod || "cash",
+        paymentStatus: "unpaid",
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      });
+      toast.success(`Đã tạo đơn thuê thêm: ${newTime} – ${String((nh + 1) % 24).padStart(2, "0")}:${String(nm).padStart(2, "0")}`);
+      setLoading(true);
+      await load();
+    } catch (e: unknown) {
+      const msg =
+        (e as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Không thuê thêm được (có thể trùng lịch)";
+      toast.error(msg);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-32">
@@ -63,7 +105,7 @@ export default function MyBookings() {
     <div className="max-w-4xl mx-auto px-4 py-10">
       <h1 className="text-2xl font-extrabold text-gray-900 mb-2 flex items-center gap-2">
         <CalendarDays className="w-6 h-6 text-blue-600" />
-        Đơn đặt sân của tôi
+        Đơn đặt sân bóng rổ của tôi
       </h1>
       <p className="text-gray-500 text-sm mb-8">
         Xin chào {user?.fullName || user?.email}
@@ -89,7 +131,9 @@ export default function MyBookings() {
                   <span className="font-bold text-green-700">
                     BK{String(b.id).padStart(6, "0")}
                   </span>
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${st.className}`}>
+                  <span
+                    className={`text-xs font-bold px-2.5 py-1 rounded-full ${st.className}`}
+                  >
                     {st.label}
                   </span>
                 </div>
@@ -103,9 +147,10 @@ export default function MyBookings() {
                     <span className="font-semibold">{b.court}</span>
                   </div>
                   <div>
-                    <span className="text-gray-400">Ngày: </span>
+                    <span className="text-gray-400">Ngày & giờ: </span>
                     <span className="font-semibold">
-                      {b.date} · {b.time} ({b.duration}h)
+                      {formatDateVi(b.date)} · {formatSlotRange(b.time, b.duration || 1)} (
+                      {b.duration}h)
                     </span>
                   </div>
                   <div>
@@ -122,14 +167,30 @@ export default function MyBookings() {
                     </span>
                   </div>
                 </div>
-                {b.status === "pending" || b.status === "confirmed" ? (
-                  <button
-                    onClick={() => cancelBooking(b.id)}
-                    className="mt-4 text-sm font-semibold text-red-600 hover:underline"
+                <div className="mt-4 flex flex-wrap gap-4">
+                  {b.status === "pending" || b.status === "confirmed" ? (
+                    <button
+                      onClick={() => cancelBooking(b.id)}
+                      className="text-sm font-semibold text-red-600 hover:underline"
+                    >
+                      Hủy đơn
+                    </button>
+                  ) : null}
+                  {b.status === "pending" || b.status === "confirmed" ? (
+                    <button
+                      onClick={() => extendOneHour(b)}
+                      className="text-sm font-semibold text-blue-600 hover:underline"
+                    >
+                      Thuê thêm 1 giờ
+                    </button>
+                  ) : null}
+                  <Link
+                    to={`/booking?fieldId=${b.fieldId}&courtId=${b.courtId}`}
+                    className="text-sm font-semibold text-gray-600 hover:underline"
                   >
-                    Hủy đơn
-                  </button>
-                ) : null}
+                    Đặt lại sân này
+                  </Link>
+                </div>
               </div>
             );
           })}
