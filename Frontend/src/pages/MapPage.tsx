@@ -127,10 +127,6 @@ export default function MapPage() {
           <MapPin className="w-7 h-7 text-blue-600" />
           Bản đồ sân thể thao
         </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Các điểm lấy từ <code className="text-xs bg-gray-100 px-1 rounded">lat/lng</code> trong
-          db.json — bạn có thể tự chỉnh khi đổi địa chỉ.
-        </p>
       </div>
 
       {loading ? (
