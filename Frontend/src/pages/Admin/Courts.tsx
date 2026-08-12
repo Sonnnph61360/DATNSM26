@@ -61,7 +61,7 @@ const handleOpenModal = (court?: Court) => {
     } else {
         setEditingCourt(null);
         form.resetFields();
-        form.setFieldsValue({ status: "active", type: "Pickleball" }); // defaults
+        form.setFieldsValue({ status: "active", type: "Sân Bóng Rổ" }); // defaults
     }
     setIsModalOpen(true);
 };
@@ -163,12 +163,11 @@ return (
                     <Input placeholder="VD: Sân Bóng số 1" size="large" />
                 </Form.Item>
 
-                <Form.Item label="Bộ môn" name="type" rules={[{ required: true }]}>
+                <Form.Item label="Loại Sân" name="Loại Sân" rules={[{ required: true }]}>
                     <Select size="large" options={[
-                        { value: 'Pickleball', label: 'Pickleball' },
-                        { value: 'Bóng đá 5 người', label: 'Bóng đá 5 người' },
-                        { value: 'Bóng đá 7 người', label: 'Bóng đá 7 người' },
-                        { value: 'Cầu lông', label: 'Cầu lông' },
+                        { value: 'Sân Bóng Rổ 5x5', label: 'Sân Bóng Rổ 5x5' },
+                        { value: 'Sân Bóng Rổ 3x3', label: 'Sân Bóng Rổ 3x3' },
+                        
                     ]} />
                 </Form.Item>
 
