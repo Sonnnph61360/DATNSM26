@@ -1,146 +1,167 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
-import { Table, Tag, Select, message, Spin } from "antd";
-import { Link } from "react-router-dom";
-import { CalendarDays, Wallet, CheckCircle, Clock } from "lucide-react";
-
-const API_URL = "http://localhost:3000";
-
-interface Booking {
-    id: number;
-    fieldName: string;
-    court: string;
-    date: string;
-    time: string;
-    duration: number;
-    total: number;
-    status: string;
-    paymentMethod: string;
-    customer: {
-        fullName: string;
-        phone: string;
-        note: string;
-    };
-    createdAt: string;
-}
-
+import { Table, Tag, Select, message, Spin, Button } from "antd";
+import { api, type Booking, formatCurrency, formatSlotRange } from "../../lib/api";
+import { formatDateVi } from "../../lib/locale";
 export default function AdminBookings() {
-    const [bookings, setBookings] = useState<Booking[]>([]);
-    const [loading, setLoading] = useState(true);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
 
-    const fetchBookings = async () => {
-        try {
-            const res = await axios.get(`${API_URL}/bookings`);
-            setBookings(res.data.reverse()); 
-        } catch (error) {
-            message.error("Lỗi khi tải danh sách đặt sân. Hãy bật npm run db");
-        } finally {
-            setLoading(false);
-        }
-    };
+  const fetchBookings = async () => {
+    try {
+      const res = await api.get<Booking[]>("/bookings");
+      setBookings([...res.data].reverse());
+    } catch {
+      message.error("Không tải được danh sách đơn. Kiểm tra Backend đang chạy.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    useEffect(() => {
-        fetchBookings();
-    }, []);
+  useEffect(() => {
+    fetchBookings();
+  }, []);
 
-    const updateStatus = async (id: number, newStatus: string) => {
-        try {
-            await axios.patch(`${API_URL}/bookings/${id}`, { status: newStatus });
-            message.success("Cập nhật trạng thái thành công!");
-            setBookings(bookings.map(b => b.id === id ? { ...b, status: newStatus } : b));
-        } catch (error) {
-            message.error("Cập nhật thất bại.");
-        }
-    };
+  const updateStatus = async (id: number, newStatus: string) => {
+    const current = bookings.find((b) => b.id === id);
+    if (current?.status === "cancelled" && newStatus === "confirmed") {
+      message.error("Đơn đã hủy — không thể xác nhận lại");
+      return;
+    }
+    if (current?.status === "cancelled" && newStatus === "pending") {
+      message.error("Đơn đã hủy — không thể chuyển về chờ xác nhận");
+      return;
+    }
+    try {
+      await api.patch(`/bookings/${id}`, { status: newStatus });
+      message.success("Cập nhật trạng thái thành công!");
+      setBookings((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, status: newStatus } : b))
+      );
+    } catch (e: unknown) {
+      const msg =
+        (e as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Cập nhật thất bại.";
+      message.error(msg);
+    }
+  };
 
-    const columns = [
-        {
-            title: "Mã Đơn",
-            dataIndex: "id",
-            key: "id",
-            render: (text: number) => <span className="font-bold text-green-700">BK{String(text).padStart(6, "0")}</span>,
-        },
-        {
-            title: "Khách hàng",
-            key: "customer",
-            render: (_, record: Booking) => (
-                <div>
-                    <div className="font-bold">{record.customer.fullName}</div>
-                    <div className="text-gray-500 text-xs">{record.customer.phone}</div>
-                </div>
-            ),
-        },
-        {
-            title: "Thông tin Sân",
-            key: "courtInfo",
-            render: (_, record: Booking) => (
-                <div className="text-sm">
-                    <div className="font-semibold text-gray-800">{record.court} - {record.fieldName}</div>
-                    <div className="text-gray-500 text-xs flex items-center mt-1">
-                        <CalendarDays className="w-3 h-3 mr-1" /> {record.date}
-                        <Clock className="w-3 h-3 ml-2 mr-1" /> {record.time} ({record.duration}h)
-                    </div>
-                </div>
-            ),
-        },
-        {
-            title: "Thanh toán",
-            key: "payment",
-            render: (_, record: Booking) => (
-                <div>
-                    <div className="text-red-500 font-bold">{record.total.toLocaleString("vi-VN")}đ</div>
-                    <div className="text-xs text-gray-500 flex items-center mt-0.5">
-                        <Wallet className="w-3 h-3 mr-1" />
-                        {record.paymentMethod === "cash" ? "Tại sân" : "Chuyển khoản"}
-                    </div>
-                </div>
-            ),
-        },
-        {
-            title: "Trạng thái",
-            key: "status",
-            render: (_, record: Booking) => (
-                <Select
-                    value={record.status}
-                    style={{ width: 140 }}
-                    onChange={(val) => updateStatus(record.id, val)}
-                    options={[
-                        { value: 'pending', label: <Tag color="gold">Chờ xác nhận</Tag> },
-                        { value: 'approved', label: <Tag color="green">Đã duyệt</Tag> },
-                        { value: 'cancelled', label: <Tag color="red">Đã huỷ</Tag> },
-                    ]}
-                />
-            ),
-        }
-    ];
+  const markPaid = async (id: number) => {
+    try {
+      await api.patch(`/bookings/${id}`, { paymentStatus: "paid" });
+      message.success("Đã đánh dấu thanh toán");
+      setBookings((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, paymentStatus: "paid" } : b))
+      );
+    } catch {
+      message.error("Thất bại");
+    }
+  };
 
-    return (
-        <div className="min-h-screen bg-gray-50 p-8">
-            <div className="max-w-6xl mx-auto bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <div className="flex justify-between items-center mb-6">
-                    <div>
-                        <h1 className="text-2xl font-extrabold text-gray-800 flex items-center gap-2">
-                            <CheckCircle className="text-green-600" />
-                            Quản lý Đơn Đặt Sân
-                        </h1>
-                        <p className="text-gray-500 text-sm mt-1">Dành cho Admin phê duyệt yêu cầu từ khách hàng</p>
-                    </div>
-                    <Link to="/" className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-50">
-                        Quay về Trang chủ
-                    </Link>
-                </div>
-
-                {loading ? (
-                    <div className="flex justify-center p-12"><Spin size="large" /></div>
-                ) : (
-                    <Table
-                        dataSource={bookings}
-                        columns={columns}
-                        rowKey="id"
-                        pagination={{ pageSize: 8 }}
-                    />
-                )}
-            </div>
+  const columns = [
+    {
+      title: "Mã đơn",
+      dataIndex: "id",
+      render: (text: number) => (
+        <span className="font-bold text-green-700">
+          BK{String(text).padStart(6, "0")}
+        </span>
+      ),
+    },
+    {
+      title: "Khách hàng",
+      key: "customer",
+      render: (_: unknown, record: Booking) => (
+        <div>
+          <div className="font-bold">{record.customer?.fullName}</div>
+          <div className="text-gray-500 text-xs">{record.customer?.phone}</div>
         </div>
+      ),
+    },
+    {
+      title: "Sân",
+      key: "courtInfo",
+      render: (_: unknown, record: Booking) => (
+        <div className="text-sm">
+          <div className="font-semibold">{record.fieldName}</div>
+          <div className="text-gray-500">{record.court}</div>
+        </div>
+      ),
+    },
+    {
+      title: "Thời gian",
+      key: "time",
+      render: (_: unknown, r: Booking) => (
+        <span className="text-sm">
+          {formatDateVi(r.date)} · {formatSlotRange(r.time, r.duration || 1)} ({r.duration} giờ)
+        </span>
+      ),
+    },
+    {
+      title: "Tổng tiền",
+      dataIndex: "total",
+      render: (v: number) => (
+        <span className="font-bold text-blue-600">{formatCurrency(v)}</span>
+      ),
+    },
+    {
+      title: "Thanh toán",
+      key: "pay",
+      render: (_: unknown, r: Booking) => (
+        <div className="text-xs">
+          <div>{r.paymentMethod === "transfer" ? "Chuyển khoản" : "Tại sân"}</div>
+          <Tag color={r.paymentStatus === "paid" ? "green" : "default"}>
+            {r.paymentStatus === "paid" ? "Đã thanh toán" : "Chưa thanh toán"}
+          </Tag>
+        </div>
+      ),
+    },
+    {
+      title: "Trạng thái",
+      key: "status",
+      render: (_: unknown, record: Booking) => (
+        <Select
+          value={record.status}
+          style={{ width: 140 }}
+          onChange={(v) => updateStatus(record.id, v)}
+          options={[
+            { value: "pending", label: "Chờ xác nhận", disabled: record.status === "cancelled" },
+            { value: "confirmed", label: "Đã xác nhận", disabled: record.status === "cancelled" },
+            { value: "completed", label: "Hoàn thành" },
+            { value: "cancelled", label: "Đã hủy" },
+          ]}
+        />
+      ),
+    },
+    {
+      title: "TT",
+      key: "actions",
+      render: (_: unknown, r: Booking) =>
+        r.paymentStatus !== "paid" ? (
+          <Button size="small" type="link" onClick={() => markPaid(r.id)}>
+            Đánh dấu đã TT
+          </Button>
+        ) : null,
+    },
+  ];
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20">
+        <Spin size="large" />
+      </div>
     );
+  }
+
+  return (
+    <div>
+      <h1 className="text-2xl font-bold mb-6">Danh sách đơn đặt sân</h1>
+      <Table
+        rowKey="id"
+        dataSource={bookings}
+        columns={columns}
+        pagination={{ pageSize: 10 }}
+        scroll={{ x: 900 }}
+      />
+    </div>
+  );
 }
