@@ -45,8 +45,14 @@ app.get("/", (_req, res) => {
   });
 });
 
+import { runSeed } from "./seed";
+
 connectDB(MONGODB_URI)
-  .then(() => {
+  .then(async (inMemory) => {
+    if (inMemory) {
+      await runSeed(false);
+      console.log("Memory DB automatically seeded with db.json!");
+    }
     app.listen(PORT, () => {
       console.log(`Server running at http://localhost:${PORT}`);
     });
