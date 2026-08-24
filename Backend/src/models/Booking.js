@@ -26,6 +26,8 @@ const bookingSchema = new mongoose.Schema(
     paymentMethod: { type: String, default: "cash" },
     paymentStatus: { type: String, default: "unpaid" },
     status: { type: String, default: "pending" },
+    refundStk: { type: String, default: "" },
+    refundBank: { type: String, default: "" },
     createdAt: { type: String },
   },
   { timestamps: true, versionKey: false }
