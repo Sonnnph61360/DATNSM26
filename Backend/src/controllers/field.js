@@ -29,6 +29,15 @@ export async function getField(req, res) {
 
 export async function createField(req, res) {
   try {
+    const { name } = req.body;
+    if (name) {
+      const existing = await Field.findOne({
+        name: { $regex: new RegExp(`^${name}$`, "i") }
+      });
+      if (existing) {
+        return res.status(409).json({ message: "Tên cơ sở đã tồn tại" });
+      }
+    }
     const id = await nextId("fields");
     const field = await Field.create({ ...req.body, id });
     return res.status(201).json(serialize(field));
