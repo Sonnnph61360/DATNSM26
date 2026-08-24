@@ -27,10 +27,7 @@ async function loadDbJson() {
   throw new Error("Không tìm thấy Frontend/db.json");
 }
 
-async function run() {
-  await mongoose.connect(MONGODB_URI);
-  console.log("Connected");
-
+export async function runSeed(disconnect = true) {
   const data = await loadDbJson();
 
   await Promise.all([
@@ -40,13 +37,11 @@ async function run() {
     Booking.deleteMany({}),
   ]);
 
-  // Users — giữ password đã hash nếu có dạng $2, không thì hash lại
   for (const u of data.users || []) {
     let password = u.password;
     if (!password || !String(password).startsWith("$2")) {
       password = await bcrypt.hash(password || "123456", 10);
     }
-    // Đảm bảo admin password = 123456 nếu là admin@gmail.com
     if (u.email === "admin@gmail.com") {
       password = await bcrypt.hash("123456", 10);
     }
@@ -59,17 +54,14 @@ async function run() {
       role: u.role || "user",
     });
   }
-  console.log("Users:", data.users?.length || 0);
 
   for (const f of data.fields || []) {
     await Field.create({ ...f });
   }
-  console.log("Fields:", data.fields?.length || 0);
 
   for (const c of data.courts || []) {
     await Court.create({ ...c });
   }
-  console.log("Courts:", data.courts?.length || 0);
 
   for (const b of data.bookings || []) {
     await Booking.create({
@@ -77,7 +69,6 @@ async function run() {
       createdAt: b.createdAt || new Date().toISOString(),
     });
   }
-  console.log("Bookings:", data.bookings?.length || 0);
 
   const max = (arr, key = "id") =>
     arr && arr.length ? Math.max(...arr.map((x) => Number(x[key]) || 0)) : 0;
@@ -86,13 +77,12 @@ async function run() {
   await setCounter("fields", max(data.fields));
   await setCounter("courts", max(data.courts));
   await setCounter("bookings", max(data.bookings));
-  console.log("Counters set");
-
-  await mongoose.disconnect();
   console.log("Seed done. Admin: admin@gmail.com / 123456");
+  if (disconnect) await mongoose.disconnect();
 }
 
-run().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+if (require.main === module) {
+  mongoose.connect(MONGODB_URI).then(() => runSeed(true)).catch(e => {
+    console.error(e); process.exit(1);
+  });
+}
