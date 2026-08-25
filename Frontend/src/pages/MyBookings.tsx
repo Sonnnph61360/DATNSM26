@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Loader2, CalendarDays } from "lucide-react";
 import { api, Booking, formatCurrency, formatSlotRange } from "../lib/api";
@@ -17,6 +17,9 @@ export default function MyBookings() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const user = getUser();
+
+  const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: 0, stk: "", bank: "" });
+  const [qrModal, setQrModal] = useState<{ isOpen: boolean, code: string | null }>({ isOpen: false, code: null });
 
   const load = async () => {
     try {
@@ -41,14 +44,26 @@ export default function MyBookings() {
     load();
   }, [user?.id, user?.email, user?.phone]);
 
-  const cancelBooking = async (id: number) => {
-    if (!confirm("Bạn chắc chắn muốn hủy đơn này?")) return;
+  const openCancelModal = (id: number) => {
+    setCancelModal({ isOpen: true, bookingId: id, stk: "", bank: "" });
+  };
+
+  const submitCancel = async () => {
+    if (!cancelModal.stk || !cancelModal.bank) {
+      toast.error("Vui lòng nhập Số tài khoản và Ngân hàng để hoàn tiền");
+      return;
+    }
     try {
-      await api.patch(`/bookings/${id}`, { status: "cancelled" });
+      await api.patch(`/bookings/${cancelModal.bookingId}`, {
+        status: "cancelled",
+        refundStk: cancelModal.stk,
+        refundBank: cancelModal.bank
+      });
       setBookings((prev) =>
-        prev.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b))
+        prev.map((b) => (b.id === cancelModal.bookingId ? { ...b, status: "cancelled" } as Booking : b))
       );
-      toast.success("Đã hủy đơn");
+      toast.success("Đã hủy đơn và gửi email xác nhận hoàn tiền");
+      setCancelModal({ isOpen: false, bookingId: 0, stk: "", bank: "" });
     } catch {
       toast.error("Hủy thất bại");
     }
@@ -160,17 +175,37 @@ export default function MyBookings() {
                     </span>
                   </div>
                   <div>
+                    <span className="text-gray-400">Khách đặt: </span>
+                    <span className="font-semibold">{b.customer?.fullName} ({b.customer?.phone})</span>
+                  </div>
+                  <div>
                     <span className="text-gray-400">Thanh toán: </span>
                     <span className="font-semibold">
-                      {b.paymentMethod === "transfer" ? "Online" : "Tại sân"} ·{" "}
-                      {b.paymentStatus === "paid" ? "Đã thanh toán" : "Chưa TT"}
+                      {b.paymentMethod === "deposit" || b.paymentMethod === "full" ? "Online" : "Tại sân"} ·{" "}
+                      {b.paymentMethod === "deposit" ? "Đã cọc 30%" : b.paymentMethod === "full" ? "Đã thanh toán 100%" : "Chưa TT"}
                     </span>
                   </div>
+                  {b.status === "cancelled" && (
+                    <div className="sm:col-span-2 mt-1">
+                      <span className="text-sm font-bold text-red-600 bg-red-50 px-3 py-1 rounded-full">
+                        * Tiền cọc đang được xử lý hoàn trả (trong 24h)
+                      </span>
+                    </div>
+                  )}
+                  {(b.status !== "cancelled") && (
+                    <div className="sm:col-span-2 mt-1">
+                      <button
+                        onClick={() => setQrModal({ isOpen: true, code: `CHECKIN-BK${String(b.id).padStart(6, "0")}` })}
+                        className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                        📱 Xem mã Check-in sân
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="mt-4 flex flex-wrap gap-4">
                   {b.status === "pending" || b.status === "confirmed" ? (
                     <button
-                      onClick={() => cancelBooking(b.id)}
+                      onClick={() => openCancelModal(b.id)}
                       className="text-sm font-semibold text-red-600 hover:underline"
                     >
                       Hủy đơn
@@ -194,6 +229,44 @@ export default function MyBookings() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {cancelModal.isOpen && (
+        <div className="fixed inset-0 bg-black/50 flex flex-col items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-xl">
+            <h3 className="text-xl font-bold mb-3 text-gray-900">Hoàn trả tiền cọc/thanh toán</h3>
+            <p className="text-gray-600 text-sm mb-4">Bạn chắc chắn muốn hủy đơn này? Vui lòng nhập thông tin ngân hàng để nhận lại tiền hoàn, hệ thống sẽ gửi email xác nhận cho bạn.</p>
+            <div className="space-y-3 mb-6">
+              <div>
+                <label className="text-sm font-semibold text-gray-700">Ngân hàng:</label>
+                <input type="text" className="w-full border border-gray-300 rounded-lg p-2 mt-1 focus:ring focus:ring-blue-200 outline-none" placeholder="VD: MB Bank, Vietcombank" value={cancelModal.bank} onChange={e => setCancelModal({ ...cancelModal, bank: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-gray-700">Số tài khoản:</label>
+                <input type="text" className="w-full border border-gray-300 rounded-lg p-2 mt-1 focus:ring focus:ring-blue-200 outline-none" placeholder="Nhập số tài khoản của bạn" value={cancelModal.stk} onChange={e => setCancelModal({ ...cancelModal, stk: e.target.value })} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200" onClick={() => setCancelModal({ ...cancelModal, isOpen: false })}>Đóng</button>
+              <button className="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 shadow-sm" onClick={submitCancel}>Xác nhận hủy & Hoàn tiền</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {qrModal.isOpen && (
+        <div className="fixed inset-0 bg-black/60 flex flex-col items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={() => setQrModal({ isOpen: false, code: null })}>
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-2xl font-extrabold mb-2 text-gray-900">Mã Check-in sân</h3>
+            <p className="text-gray-500 mb-6 text-sm">Đưa mã này cho nhân viên tại sân để nhận sân</p>
+            <div className="bg-blue-50 p-6 rounded-xl mb-6 border-2 border-dashed border-blue-300">
+              <span className="text-3xl font-black text-blue-700 tracking-widest">{qrModal.code}</span>
+            </div>
+            <button className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md transition-colors" onClick={() => setQrModal({ isOpen: false, code: null })}>
+              Đóng
+            </button>
+          </div>
         </div>
       )}
     </div>
