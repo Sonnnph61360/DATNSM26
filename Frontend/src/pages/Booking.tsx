@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import React, { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -42,7 +42,7 @@ export default function Booking() {
     phone: getUser()?.phone || "",
     note: "",
   });
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "transfer">("cash");
+  const [paymentMethod, setPaymentMethod] = useState<"deposit" | "full">("deposit");
   const [bookedSlots, setBookedSlots] = useState<Awaited<ReturnType<typeof getBookedSlots>>>([]);
 
   const selectedCourt = courts.find((c) => c.id === courtId) || null;
@@ -50,6 +50,7 @@ export default function Booking() {
     () => (selectedCourt ? selectedCourt.price * duration : 0),
     [selectedCourt, duration]
   );
+  const deposit = total * 0.3; // 30% deposit
 
   useEffect(() => {
     if (!fieldIdParam) {
@@ -129,8 +130,8 @@ export default function Booking() {
       return;
     }
 
-    // Online payment: show QR first
-    if (paymentMethod === "transfer" && !showQr) {
+    // Online payment is now required (deposit or full)
+    if (!showQr) {
       setShowQr(true);
       return;
     }
@@ -155,8 +156,8 @@ export default function Booking() {
           email: user?.email,
         },
         paymentMethod,
-        paymentStatus: paymentMethod === "transfer" ? "paid" : "unpaid",
-        status: paymentMethod === "transfer" ? "confirmed" : "pending",
+        paymentStatus: "paid", // They paid the deposit or full online
+        status: "pending", // Lúc mới đặt sân thì trạng thái là chờ xác nhận
         createdAt: new Date().toISOString(),
       };
 
@@ -214,11 +215,15 @@ export default function Booking() {
           <p className="text-gray-500 mb-4">
             Mã đơn: <span className="font-bold text-green-700">{success.code}</span>
           </p>
-          {success.paymentMethod === "transfer" ? (
-            <p className="text-sm text-green-600 mb-6">Đã thanh toán online · Đơn được xác nhận</p>
+          {paymentMethod === "full" ? (
+            <p className="text-sm text-green-600 mb-6">Đã thanh toán 100% · Cần admin xác nhận</p>
           ) : (
-            <p className="text-sm text-amber-600 mb-6">Thanh toán tại sân · Chờ chủ sân xác nhận</p>
+            <p className="text-sm text-amber-600 mb-6">Đã đặt cọc 30% · Cần admin xác nhận</p>
           )}
+          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-6 inline-block w-full text-center">
+            <QrCode className="w-40 h-40 mx-auto text-gray-800" />
+            <p className="text-xs text-gray-500 mt-2">Mã QR Check-in / Xác minh tại sân</p>
+          </div>
           <div className="space-y-3">
             <Link
               to="/my-bookings"
@@ -258,11 +263,10 @@ export default function Booking() {
                   key={c.id}
                   type="button"
                   onClick={() => setCourtId(c.id)}
-                  className={`border rounded-xl px-4 py-3 text-sm font-bold transition ${
-                    courtId === c.id
-                      ? "bg-blue-600 border-blue-600 text-white"
-                      : "border-gray-200 text-gray-700 hover:border-blue-400"
-                  }`}
+                  className={`border rounded-xl px-4 py-3 text-sm font-bold transition ${courtId === c.id
+                    ? "bg-blue-600 border-blue-600 text-white"
+                    : "border-gray-200 text-gray-700 hover:border-blue-400"
+                    }`}
                 >
                   {c.name}
                   <div className={`text-xs mt-1 font-medium ${courtId === c.id ? "text-blue-100" : "text-gray-400"}`}>
@@ -301,13 +305,12 @@ export default function Booking() {
                       type="button"
                       disabled={disabled}
                       onClick={() => setTime(t)}
-                      className={`rounded-lg py-2 text-xs font-bold border transition ${
-                        time === t
-                          ? "bg-blue-600 border-blue-600 text-white"
-                          : disabled
+                      className={`rounded-lg py-2 text-xs font-bold border transition ${time === t
+                        ? "bg-blue-600 border-blue-600 text-white"
+                        : disabled
                           ? "bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed"
                           : "border-gray-200 text-gray-700 hover:border-blue-400"
-                      }`}
+                        }`}
                     >
                       {t}
                     </button>
@@ -323,11 +326,10 @@ export default function Booking() {
                     key={d.value}
                     type="button"
                     onClick={() => setDuration(d.value)}
-                    className={`px-4 py-2 rounded-xl text-sm font-bold border transition ${
-                      duration === d.value
-                        ? "bg-blue-600 border-blue-600 text-white"
-                        : "border-gray-200 text-gray-600 hover:border-blue-400"
-                    }`}
+                    className={`px-4 py-2 rounded-xl text-sm font-bold border transition ${duration === d.value
+                      ? "bg-blue-600 border-blue-600 text-white"
+                      : "border-gray-200 text-gray-600 hover:border-blue-400"
+                      }`}
                   >
                     {d.label}
                   </button>
@@ -381,54 +383,57 @@ export default function Booking() {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label
-                className={`block border rounded-xl p-4 cursor-pointer transition ${
-                  paymentMethod === "cash" ? "border-blue-600 bg-blue-50/50" : "border-gray-200"
-                }`}
+                className={`block border rounded-xl p-4 cursor-pointer transition ${paymentMethod === "deposit" ? "border-blue-600 bg-blue-50/50" : "border-gray-200"
+                  }`}
               >
                 <div className="flex items-center">
                   <input
                     type="radio"
                     name="paymentMethod"
-                    checked={paymentMethod === "cash"}
+                    checked={paymentMethod === "deposit"}
                     onChange={() => {
-                      setPaymentMethod("cash");
+                      setPaymentMethod("deposit");
                       setShowQr(false);
                     }}
                     className="w-4 h-4"
                   />
                   <div className="ml-3">
-                    <div className="font-bold text-gray-800 text-sm">Thanh toán tại sân</div>
-                    <div className="text-xs text-gray-500">Tiền mặt / QR tại quầy</div>
+                    <div className="font-bold text-gray-800 text-sm">Đặt cọc (30%)</div>
+                    <div className="text-xs text-gray-500">Thanh toán chuyển khoản cọc</div>
                   </div>
                 </div>
               </label>
               <label
-                className={`block border rounded-xl p-4 cursor-pointer transition ${
-                  paymentMethod === "transfer" ? "border-blue-600 bg-blue-50/50" : "border-gray-200"
-                }`}
+                className={`block border rounded-xl p-4 cursor-pointer transition ${paymentMethod === "full" ? "border-blue-600 bg-blue-50/50" : "border-gray-200"
+                  }`}
               >
                 <div className="flex items-center">
                   <input
                     type="radio"
                     name="paymentMethod"
-                    checked={paymentMethod === "transfer"}
-                    onChange={() => setPaymentMethod("transfer")}
+                    checked={paymentMethod === "full"}
+                    onChange={() => {
+                      setPaymentMethod("full");
+                      setShowQr(false);
+                    }}
                     className="w-4 h-4"
                   />
                   <div className="ml-3">
-                    <div className="font-bold text-gray-800 text-sm">Chuyển khoản online</div>
-                    <div className="text-xs text-gray-500">Momo / ZaloPay / Ngân hàng (mô phỏng)</div>
+                    <div className="font-bold text-gray-800 text-sm">Thanh toán toàn bộ (100%)</div>
+                    <div className="text-xs text-gray-500">Chuyển khoản toàn bộ, không cần trả sau</div>
                   </div>
                 </div>
               </label>
             </div>
 
-            {showQr && paymentMethod === "transfer" && (
+            {showQr && (
               <div className="mt-6 border border-dashed border-blue-300 rounded-2xl p-6 bg-blue-50/40 text-center">
                 <QrCode className="w-12 h-12 text-blue-600 mx-auto mb-3" />
                 <p className="font-bold text-gray-800 mb-1">Quét mã để thanh toán</p>
                 <p className="text-sm text-gray-500 mb-2">
-                  Số tiền: <span className="font-extrabold text-blue-600">{formatCurrency(total)}</span>
+                  Số tiền cần chuyển: <span className="font-extrabold text-blue-600">
+                    {formatCurrency(paymentMethod === "deposit" ? deposit : total)}
+                  </span>
                 </p>
                 <p className="text-xs text-gray-400 mb-4">
                   (Demo) Nội dung: DATSAN {field.name} {date} {time}
@@ -473,6 +478,10 @@ export default function Booking() {
                   <span className="text-gray-500">Thời lượng</span>
                   <span>{duration} giờ</span>
                 </div>
+                <div className="flex justify-between border-b border-gray-100 pb-3">
+                  <span className="text-gray-500">Tiền cọc (30%)</span>
+                  <span className="text-amber-500 font-bold">{formatCurrency(deposit)}</span>
+                </div>
                 <div className="flex justify-between pt-1">
                   <span className="text-gray-500">Tổng tiền</span>
                   <span className="text-blue-600 text-lg font-extrabold">
@@ -493,11 +502,9 @@ export default function Booking() {
                 )}
                 {loading
                   ? "Đang xử lý..."
-                  : paymentMethod === "transfer" && !showQr
-                  ? "Thanh toán & đặt sân"
-                  : paymentMethod === "transfer" && showQr
-                  ? "Tôi đã thanh toán"
-                  : "Xác nhận đặt sân"}
+                  : !showQr
+                    ? "Tiếp tục thanh toán"
+                    : "Tôi đã thanh toán & Đặt sân"}
               </button>
 
               <button
