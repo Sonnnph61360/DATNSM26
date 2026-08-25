@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Table, Tag, Select, message, Spin, Button } from "antd";
+import React, { useEffect, useState } from "react";
+import { Table, Select, message, Spin, Button } from "antd";
 import { api, type Booking, formatCurrency, formatSlotRange } from "../../lib/api";
 import { formatDateVi } from "../../lib/locale";
 export default function AdminBookings() {
@@ -45,15 +45,27 @@ export default function AdminBookings() {
     }
   };
 
-  const markPaid = async (id: number) => {
+  const markPaymentStatus = async (id: number, status: string) => {
     try {
-      await api.patch(`/bookings/${id}`, { paymentStatus: "paid" });
-      message.success("Đã đánh dấu thanh toán");
+      await api.patch(`/bookings/${id}`, { paymentStatus: status });
+      message.success(`Đã cập nhật thanh toán: ${status}`);
       setBookings((prev) =>
-        prev.map((b) => (b.id === id ? { ...b, paymentStatus: "paid" } : b))
+        prev.map((b) => (b.id === id ? { ...b, paymentStatus: status } : b))
       );
     } catch {
       message.error("Thất bại");
+    }
+  };
+
+  const markCheckIn = async (id: number) => {
+    try {
+      await api.patch(`/bookings/${id}`, { status: "completed" });
+      message.success("Khách đã Check-in (Hoàn thành đơn)");
+      setBookings((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, status: "completed" } : b))
+      );
+    } catch {
+      message.error("Lỗi khi Check-in");
     }
   };
 
@@ -70,10 +82,15 @@ export default function AdminBookings() {
     {
       title: "Khách hàng",
       key: "customer",
-      render: (_: unknown, record: Booking) => (
+      render: (_: unknown, record: Booking & { refundStk?: string, refundBank?: string }) => (
         <div>
           <div className="font-bold">{record.customer?.fullName}</div>
           <div className="text-gray-500 text-xs">{record.customer?.phone}</div>
+          {record.refundStk && (
+            <div className="text-xs text-red-600 mt-1 font-semibold">
+              Hoàn tiền: {record.refundBank} - {record.refundStk}
+            </div>
+          )}
         </div>
       ),
     },
@@ -107,11 +124,22 @@ export default function AdminBookings() {
       title: "Thanh toán",
       key: "pay",
       render: (_: unknown, r: Booking) => (
-        <div className="text-xs">
-          <div>{r.paymentMethod === "transfer" ? "Chuyển khoản" : "Tại sân"}</div>
-          <Tag color={r.paymentStatus === "paid" ? "green" : "default"}>
-            {r.paymentStatus === "paid" ? "Đã thanh toán" : "Chưa thanh toán"}
-          </Tag>
+        <div className="flex flex-col gap-1 items-start">
+          <div className="text-xs text-gray-500 mb-1">
+            {r.paymentMethod === "transfer" ? "Chuyển khoản" : (r.paymentMethod === "deposit" ? "Chuyển khoản (Cọc)" : "Tại sân")}
+          </div>
+          <Select
+            value={r.paymentStatus || "unpaid"}
+            size="small"
+            style={{ width: 135 }}
+            onChange={(v) => markPaymentStatus(r.id, v)}
+            options={[
+              { value: "unpaid", label: "Chưa thanh toán" },
+              { value: "deposit_paid", label: "Đã cọc tiền" },
+              { value: "paid", label: "Đã thanh toán đủ" },
+              { value: "refunded", label: "Đã hoàn tiền" },
+            ]}
+          />
         </div>
       ),
     },
@@ -133,14 +161,22 @@ export default function AdminBookings() {
       ),
     },
     {
-      title: "TT",
+      title: "Hành động",
       key: "actions",
-      render: (_: unknown, r: Booking) =>
-        r.paymentStatus !== "paid" ? (
-          <Button size="small" type="link" onClick={() => markPaid(r.id)}>
-            Đánh dấu đã TT
-          </Button>
-        ) : null,
+      render: (_: unknown, r: Booking & { refundStk?: string }) => (
+        <div className="flex flex-col gap-1">
+          {r.status === "cancelled" && r.paymentStatus !== "refunded" && r.refundStk && (
+            <Button size="small" danger onClick={() => markPaymentStatus(r.id, "refunded")}>
+              Đã hoàn tiền
+            </Button>
+          )}
+          {r.status === "confirmed" && (
+            <Button size="small" type="primary" className="bg-green-600" onClick={() => markCheckIn(r.id)}>
+              Check-in
+            </Button>
+          )}
+        </div>
+      ),
     },
   ];
 
