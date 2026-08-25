@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "src/app.js",
   "scripts": {
-    "dev": "nodemon --exec babel-node src/app.js",
+    "dev": "nodemon --exec babel-node src/bootstrap.js",
     "start": "node src/app.js",
     "seed": "babel-node src/seed.js"
   },
