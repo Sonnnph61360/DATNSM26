@@ -9,6 +9,12 @@ import fieldRouter from "./routes/field";
 import courtRouter from "./routes/court";
 import bookingRouter from "./routes/booking";
 
+console.log("EMAIL_USER =", process.env.EMAIL_USER);
+console.log(
+  "EMAIL_PASS =",
+  process.env.EMAIL_PASS ? "ĐÃ LOAD" : "CHƯA LOAD"
+);
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const MONGODB_URI =
