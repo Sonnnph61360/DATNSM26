@@ -11,159 +11,7 @@
   ],
   "fields": [
     {
-      "id": 1,{
-        "users": [
-          {
-            "id": 1,
-            "email": "admin@gmail.com",
-            "password": "$2a$10$i1KvrCD4Q4dY7y79PNYG.OqRWYYnKwyTICxp7Lb0rmVtBdi5VshVe",
-            "fullName": "Admin System",
-            "phone": "0812288111",
-            "role": "admin"
-          }
-        ],
-        "fields": [
-          {
-            "id": 1,
-            "name": "Sân Bóng Rổ GoldenState 1",
-            "sport": "Bóng Rổ",
-            "sportLabel": "Bóng Rổ",
-            "address": "Trịnh Văn Bô, Nam Từ Liêm, Hà Nội",
-            "city": "Hà Nội",
-            "phone": "0987400019",
-            "openTime": "06:00",
-            "closeTime": "22:00",
-            "description": "Cơ sở Bóng Rổ chất lượng cao, sân chuẩn thi đấu, có đèn chiếu sáng và chỗ để xe.",
-            "image": "https://i.pinimg.com/736x/a3/24/f3/a324f33646bab68bc257b3187490dbf4.jpg",
-            "courtCount": 1,
-            "priceFrom": 100000,
-            "status": "active",
-            "lat": 21.0389,
-            "lng": 105.7465
-          },
-          {
-            "id": 2,
-            "name": "Sân Bóng Rổ GoldenState 2",
-            "sport": "Bóng Rổ",
-            "sportLabel": "Bóng Rổ",
-            "address": "Trịnh Văn Bô, Nam Từ Liêm, Hà Nội",
-            "city": "Hà Nội",
-            "phone": "0909123456",
-            "openTime": "06:00",
-            "closeTime": "23:00",
-            "description": "Cụm sân Bóng Rổ tại Trịnh Văn Bô, Nam Từ Liêm, Hà Nội , mặt sân mới, phù hợp tập luyện và thi đấu.",
-            "image": "https://i.pinimg.com/736x/63/8d/c1/638dc18c74e87fec702d0af05d8c4b6c.jpg",
-            "courtCount": 1,
-            "priceFrom": 120000,
-            "status": "active",
-            "lat": 10.74,
-            "lng": 106.665
-          },
-          {
-            "id": 3,
-            "name": "Sân Bóng Rổ GoldenState 3",
-            "sport": "Bóng Rổ",
-            "sportLabel": "Bóng Rổ",
-            "address": "Trịnh Văn Bô, Nam Từ Liêm, Hà Nội",
-            "city": "Hà Nội",
-            "phone": "0241234567",
-            "openTime": "06:00",
-            "closeTime": "23:00",
-            "description": "Sân Bóng Rổ 3/5 người cỏ nhân tạo, có khán đài và phòng thay đồ.",
-            "image": "https://i.pinimg.com/736x/1d/3f/94/1d3f9490a9262d6c65b1e5f9f04a3179.jpg",
-            "courtCount": 1,
-            "priceFrom": 350000,
-            "status": "active",
-            "lat": 21.0333,
-            "lng": 105.794
-          },
-          {
-            "id": 4,
-            "name": "Sân Bóng Rổ GoldenState 4",
-            "sport": "Bóng Rổ",
-            "sportLabel": "Bóng Rổ",
-            "address": "Trịnh Văn Bô, Nam Từ Liêm, Hà Nội",
-            "city": "Hà Nội",
-            "phone": "0988111222",
-            "openTime": "06:00",
-            "closeTime": "23:00",
-            "description": "Sân Bóng Rổ trung tâm Hà Nội, dễ di chuyển.",
-            "image": "https://i.pinimg.com/1200x/6d/f5/88/6df588510bcc0faade4d9682b607dc76.jpg",
-            "courtCount": 1,
-            "priceFrom": 110000,
-            "status": "active",
-            "lat": 21.018,
-            "lng": 105.828
-          },
-          {
-            "id": 5,
-            "name": "Sân Bóng Rổ GoldenState 5",
-            "sport": "Bóng Rổ",
-            "sportLabel": "Bóng Rổ",
-            "address": "Trịnh Văn Bô, Nam Từ Liêm, Hà Nội",
-      "city": "Hồ Chí Minh",
-            "phone": "0909333444",
-            "openTime": "06:00",
-            "closeTime": "23:00",
-            "description": "Câu lạc bộ Bóng Rổ và thể thao đa năng.",
-            "image": "https://i.pinimg.com/736x/45/f5/46/45f546f6f3dea13952329b7e37f5dd74.jpg",
-            "courtCount": 1,
-            "priceFrom": 80000,
-            "status": "active",
-            "lat": 10.74,
-            "lng": 106.665
-          }
-        ],
-        "courts": [
-          {
-            "id": 1,
-            "fieldId": 1,
-            "name": "Sân Bóng Rổ GoldenState 1",
-            "type": "Bóng Rổ",
-            "price": 130000,
-            "status": "active",
-            "capacity": 4
-          },
-          {
-            "id": 2,
-            "fieldId": 1,
-            "name": "Sân Bóng Rổ GoldenState 2",
-            "type": "Bóng Rổ",
-            "price": 130000,
-            "status": "active",
-            "capacity": 4
-          },
-          {
-            "id": 3,
-            "fieldId": 2,
-            "name": "Sân Bóng Rổ GoldenState 3",
-            "type": "Bóng Rổ",
-            "price": 120000,
-            "status": "active",
-            "capacity": 4
-          },
-          {
-            "id": 4,
-            "fieldId": 2,
-            "name": "Sân Bóng Rổ GoldenState 4",
-            "type": "Bóng Rổ",
-            "price": 120000,
-            "status": "active",
-            "capacity": 4
-          },
-          {
-            "id": 5,
-            "fieldId": 2,
-            "name": "Sân Bóng Rổ GoldenState 5",
-            "type": "Bóng Rổ",
-            "price": 140000,
-            "status": "active",
-            "capacity": 4
-          }
-        ],
-        "bookings": [
-        ]
-      }
+      "id": 1,
       "name": "002 PB Club",
       "sport": "Bóng Rổ",
       "sportLabel": "Bóng Rổ",
@@ -355,5 +203,27 @@
     }
   ],
   "bookings": [
+    {
+      "fieldId": 1,
+      "courtId": 1,
+      "fieldName": "002 PB Club",
+      "court": "Sân PB 1",
+      "date": "2026-08-22",
+      "time": "21:00",
+      "duration": 1,
+      "total": 130000,
+      "customer": {
+        "fullName": "h",
+        "phone": "0123456789",
+        "note": "ok",
+        "userId": 4,
+        "email": "nguyentu0813@gamil.com"
+      },
+      "paymentMethod": "deposit",
+      "paymentStatus": "paid",
+      "status": "pending",
+      "createdAt": "2026-08-22T04:41:52.382Z",
+      "id": 1
+    }
   ]
 }

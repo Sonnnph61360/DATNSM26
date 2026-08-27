@@ -214,11 +214,10 @@ export default function Detail() {
                               `/booking?fieldId=${field.id}&courtId=${c.id}&date=${selectedDate}&time=${t}`
                             )
                           }
-                          className={`rounded-lg py-2 text-center text-xs font-bold border transition ${
-                            booked
+                          className={`rounded-lg py-2 text-center text-xs font-bold border transition ${booked
                               ? "bg-gray-100 text-gray-400 border-gray-100 cursor-not-allowed"
                               : "border-gray-200 text-gray-700 hover:border-blue-500 hover:text-blue-600"
-                          }`}
+                            }`}
                         >
                           {t}
                         </button>

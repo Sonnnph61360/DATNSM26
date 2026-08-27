@@ -1,0 +1,49 @@
+
+up to date, audited 387 packages in 5s
+
+94 packages are looking for funding
+  run `npm fund` for details
+
+12 vulnerabilities (1 low, 4 moderate, 7 high)
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+
+> nodejs-web503-base@1.0.0 seed
+> babel-node src/seed.js
+
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+MongooseServerSelectionError: connect ECONNREFUSED 127.0.0.1:27017
+    at _handleConnectionErrors (C:\Users\ASUS\Downloads\DATNSM26-main\DATNSM26-main\Backend\node_modules\mongoose\lib\connection.js:1169:11)
+    at NativeConnection.openUri (C:\Users\ASUS\Downloads\DATNSM26-main\DATNSM26-main\Backend\node_modules\mongoose\lib\connection.js:1100:11) {
+  errorLabelSet: Set(0) {},
+  reason: TopologyDescription {
+    type: 'Unknown',
+    servers: Map(1) { '127.0.0.1:27017' => [ServerDescription] },
+    stale: false,
+    compatible: true,
+    heartbeatFrequencyMS: 10000,
+    localThresholdMS: 15,
+    setName: null,
+    maxElectionId: null,
+    maxSetVersion: null,
+    commonWireVersion: 0,
+    logicalSessionTimeoutMinutes: null
+  },
+  code: undefined,
+  cause: TopologyDescription {
+    type: 'Unknown',
+    servers: Map(1) { '127.0.0.1:27017' => [ServerDescription] },
+    stale: false,
+    compatible: true,
+    heartbeatFrequencyMS: 10000,
+    localThresholdMS: 15,
+    setName: null,
+    maxElectionId: null,
+    maxSetVersion: null,
+    commonWireVersion: 0,
+    logicalSessionTimeoutMinutes: null
+  }
+}
