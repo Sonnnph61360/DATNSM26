@@ -2,6 +2,7 @@ import Booking from "../models/Booking";
 import Court from "../models/Court";
 import { nextId } from "../utils/ids";
 import { serialize, serializeMany } from "../utils/serialize";
+import Voucher from "../models/Voucher";
 import { sendMail } from "../utils/mailer";
 
 function toMin(t) {
@@ -50,73 +51,107 @@ export async function createBooking(req, res) {
       fieldName,
       court,
       date,
+      recurringDates,
       time,
       duration,
       total,
       customer,
+      services,
       paymentMethod,
       paymentStatus,
       status,
+      voucherCode,
+      discount,
     } = req.body;
 
-    if (!courtId || !date || !time) {
-      return res.status(400).json({ message: "Thiếu courtId, date hoặc time" });
-    }
-
-    const existing = await Booking.find({
-      courtId: Number(courtId),
-      date,
-      status: { $ne: "cancelled" },
-    });
-
+    const targetDates = (recurringDates && recurringDates.length > 0) ? recurringDates : [date];
     const dur = Number(duration) || 1;
-    const conflict = existing.find((b) =>
-      overlaps(b.time, b.duration, time, dur)
-    );
-    if (conflict) {
-      return res.status(409).json({
-        message: "Khung giờ đã được đặt. Vui lòng chọn giờ khác.",
-        conflictId: conflict.id,
+
+    for (const d of targetDates) {
+      if (!courtId || !d || !time) {
+        return res.status(400).json({ message: "Thiếu courtId, date hoặc time" });
+      }
+
+      const existing = await Booking.find({
+        courtId: Number(courtId),
+        date: d,
+        status: { $ne: "cancelled" },
       });
+
+      const conflict = existing.find((b) =>
+        overlaps(b.time, b.duration, time, dur)
+      );
+      if (conflict) {
+        return res.status(409).json({
+          message: `Khung giờ ngày ${d} đã được đặt. Vui lòng chọn giờ khác.`,
+          conflictId: conflict.id,
+        });
+      }
     }
 
-    const id = await nextId("bookings");
-    const booking = await Booking.create({
-      id,
-      fieldId: Number(fieldId),
-      courtId: Number(courtId),
-      fieldName: fieldName || "",
-      court: court || "",
-      date,
-      time,
-      duration: dur,
-      total: Number(total) || 0,
-      customer: customer || {},
-      paymentMethod: paymentMethod || "cash",
-      paymentStatus: paymentStatus || "unpaid",
-      status: status || "pending",
-      createdAt: new Date().toISOString(),
-    });
+    let firstBooking = null;
+    const singleTotal = Number(total) / targetDates.length || 0;
 
-    if (booking.paymentMethod === "deposit" || booking.paymentMethod === "full" || booking.paymentMethod === "transfer") {
-      const isDeposit = booking.paymentMethod === "deposit";
-      const subject = `Xác nhận đặt sân và thanh toán: BK${String(booking.id).padStart(6, '0')}`;
-      const msg = `Xin chào ${booking.customer.fullName},<br/><br/>
+    for (const d of targetDates) {
+      const id = await nextId("bookings");
+      const booking = await Booking.create({
+        id,
+        fieldId: Number(fieldId),
+        courtId: Number(courtId),
+        fieldName: fieldName || "",
+        court: court || "",
+        date: d,
+        time,
+        duration: dur,
+        total: singleTotal,
+        customer: customer || {},
+        services: services || [],
+        paymentMethod: paymentMethod || "cash",
+        paymentStatus: paymentStatus || "unpaid",
+        status: status || "pending",
+        voucherCode: voucherCode || "",
+        discount: discount || 0,
+        createdAt: new Date().toISOString(),
+      });
+      if (!firstBooking) firstBooking = booking;
+    }
+
+    // Cập nhật lượt dùng của voucher
+    if (voucherCode) {
+      await Voucher.findOneAndUpdate(
+        { code: voucherCode },
+        { $inc: { used: 1 } }
+      );
+    }
+
+    if (firstBooking.paymentMethod === "deposit" || firstBooking.paymentMethod === "full" || firstBooking.paymentMethod === "transfer") {
+      const isDeposit = firstBooking.paymentMethod === "deposit";
+      let subject = `Xác nhận đặt sân và thanh toán: BK${String(firstBooking.id).padStart(6, '0')}`;
+      if (targetDates.length > 1) {
+        subject = `Xác nhận đặt nhiều buổi (${targetDates.length} buổi) và thanh toán: BK${String(firstBooking.id).padStart(6, '0')}`;
+      }
+
+      const qrData = `CHECKIN-BK${String(firstBooking.id).padStart(6, '0')} | Sân: ${firstBooking.fieldName} - ${firstBooking.court} | Tên: ${firstBooking.customer.fullName} | ĐT: ${firstBooking.customer.phone}`;
+      const qrUrl = `https://quickchart.io/qr?text=${encodeURIComponent(qrData)}&size=250`;
+
+      const msg = `Xin chào ${firstBooking.customer.fullName},<br/><br/>
       Bạn đã ${isDeposit ? 'cọc tiền' : 'thanh toán hết'} cho đơn đặt sân.<br/>
-      <b>Cơ sở:</b> ${booking.fieldName} - ${booking.court}<br/>
-      <b>Thời gian:</b> ${booking.date} lúc ${booking.time} (${booking.duration} giờ)<br/>
+      <b>Cơ sở:</b> ${firstBooking.fieldName} - ${firstBooking.court}<br/>
+      <b>Ngày đầu tiên:</b> ${firstBooking.date} lúc ${firstBooking.time} (${firstBooking.duration} giờ)<br/>
+      <b>Số lượng buổi:</b> ${targetDates.length}<br/>
       <br/>
-      <b>MÃ CHECK-IN SÂN CỦA BẠN LÀ: CHECKIN-BK${String(booking.id).padStart(6, '0')}</b><br/>
-      Vui lòng đưa mã này cho nhân viên tại sân khi đến check-in.<br/><br/>
+      <b>Mã QR CHECK-IN SÂN CỦA BẠN:</b><br/>
+      <img src="${qrUrl}" alt="QR Check-in" /><br/>
+      Vui lòng đưa mã QR này cho nhân viên tại sân khi đến check-in.<br/><br/>
       Cảm ơn bạn!`;
 
-      const toEmail = booking.customer.email;
+      const toEmail = firstBooking.customer.email;
       if (toEmail) {
         sendMail(toEmail, subject, msg);
       }
     }
 
-    return res.status(201).json(serialize(booking));
+    return res.status(201).json(serialize(firstBooking));
   } catch (e) {
     return res.status(400).json({ message: e.message });
   }
