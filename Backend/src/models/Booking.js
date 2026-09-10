@@ -23,9 +23,15 @@ const bookingSchema = new mongoose.Schema(
     duration: { type: Number, default: 1 },
     total: { type: Number, default: 0 },
     customer: customerSchema,
+    services: {
+      type: Array,
+      default: []
+    },
     paymentMethod: { type: String, default: "cash" },
     paymentStatus: { type: String, default: "unpaid" },
     status: { type: String, default: "pending" },
+    voucherCode: { type: String, default: "" },
+    discount: { type: Number, default: 0 },
     refundStk: { type: String, default: "" },
     refundBank: { type: String, default: "" },
     createdAt: { type: String },
