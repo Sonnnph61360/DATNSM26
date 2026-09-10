@@ -35,6 +35,13 @@ export async function createCourt(req, res) {
       fieldId: Number(req.body.fieldId),
       price: Number(req.body.price) || 0,
     };
+
+    if (body.name && body.fieldId) {
+      const existing = await Court.findOne({ name: body.name, fieldId: body.fieldId });
+      if (existing) {
+        return res.status(400).json({ message: "Tên sân này đã tồn tại trong cơ sở. Vui lòng chọn tên khác." });
+      }
+    }
     const court = await Court.create(body);
     // cập nhật courtCount
     if (body.fieldId) {
@@ -50,6 +57,17 @@ export async function createCourt(req, res) {
 export async function updateCourt(req, res) {
   try {
     const id = Number(req.params.id);
+
+    if (req.body.name) {
+      const currentCourt = await Court.findOne({ id });
+      if (!currentCourt) return res.status(404).json({ message: "Not found" });
+
+      const existing = await Court.findOne({ name: req.body.name, fieldId: currentCourt.fieldId, id: { $ne: id } });
+      if (existing) {
+        return res.status(400).json({ message: "Tên sân này đã tồn tại trong cơ sở. Vui lòng chọn tên khác." });
+      }
+    }
+
     const court = await Court.findOneAndUpdate(
       { id },
       { $set: req.body },

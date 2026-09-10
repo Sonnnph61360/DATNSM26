@@ -49,6 +49,15 @@ export async function createField(req, res) {
 export async function updateField(req, res) {
   try {
     const id = Number(req.params.id);
+    if (req.body.name) {
+      const existing = await Field.findOne({
+        name: { $regex: new RegExp(`^${req.body.name}$`, "i") },
+        id: { $ne: id }
+      });
+      if (existing) {
+        return res.status(409).json({ message: "Tên cơ sở đã tồn tại" });
+      }
+    }
     const field = await Field.findOneAndUpdate(
       { id },
       { $set: req.body },
