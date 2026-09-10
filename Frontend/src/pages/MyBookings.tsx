@@ -195,7 +195,12 @@ export default function MyBookings() {
                   {(b.status !== "cancelled") && (
                     <div className="sm:col-span-2 mt-1">
                       <button
-                        onClick={() => setQrModal({ isOpen: true, code: `CHECKIN-BK${String(b.id).padStart(6, "0")}` })}
+                        onClick={() => {
+                          const code = `BK${String(b.id).padStart(6, "0")}`;
+                          const qrData = `CHECKIN-${code} | Sân: ${b.fieldName} - ${b.court} | Tên: ${b.customer?.fullName || ''} | ĐT: ${b.customer?.phone || ''}`;
+                          const url = `https://quickchart.io/qr?text=${encodeURIComponent(qrData)}&size=250`;
+                          setQrModal({ isOpen: true, code: url });
+                        }}
                         className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
                         📱 Xem mã Check-in sân
                       </button>
@@ -260,8 +265,8 @@ export default function MyBookings() {
           <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-2xl font-extrabold mb-2 text-gray-900">Mã Check-in sân</h3>
             <p className="text-gray-500 mb-6 text-sm">Đưa mã này cho nhân viên tại sân để nhận sân</p>
-            <div className="bg-blue-50 p-6 rounded-xl mb-6 border-2 border-dashed border-blue-300">
-              <span className="text-3xl font-black text-blue-700 tracking-widest">{qrModal.code}</span>
+            <div className="bg-blue-50 p-4 rounded-xl mb-6 border-2 border-dashed border-blue-300 mx-auto w-fit">
+              <img src={qrModal.code || ""} alt="QR Check-in" className="w-48 h-48 mx-auto mix-blend-multiply" />
             </div>
             <button className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md transition-colors" onClick={() => setQrModal({ isOpen: false, code: null })}>
               Đóng
