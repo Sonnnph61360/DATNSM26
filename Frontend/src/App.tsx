@@ -11,12 +11,18 @@ import FieldPage from "./pages/FieldPage";
 import MapPage from "./pages/MapPage";
 import MyBookings from "./pages/MyBookings";
 import AdminLayout from "./layouts/AdminLayout";
-import AdminBookings from "./pages/admin/AdminBookings";
-import Dashboard from "./pages/admin/Dashboard";
-import Courts from "./pages/admin/Courts";
-import CalendarPage from "./pages/admin/CalendarPage";
+import AdminBookings from "./pages/Admin/AdminBookings";
+import Dashboard from "./pages/Admin/Dashboard";
+import Courts from "./pages/Admin/Courts";
+import CalendarPage from "./pages/Admin/CalendarPage";
+import AdminCustomers from "./pages/Admin/AdminCustomers";
+import AdminVouchers from "./pages/Admin/AdminVouchers";
+import AdminEmployees from "./pages/Admin/AdminEmployees";
 import ClientLayout from "./layouts/ClientLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Paygate from "./pages/Paygate";
+import VnPayReturn from "./pages/VnPayReturn";
+import VnPaySandbox from "./pages/VnPaySandbox";
 
 function App() {
   return (
@@ -32,6 +38,9 @@ function App() {
           <Route path="map" element={<MapPage />} />
           <Route path="ban-do" element={<MapPage />} />
           <Route path="blog" element={<Blog />} />
+          <Route path="paygate" element={<Paygate />} />
+          <Route path="vnpay-return" element={<VnPayReturn />} />
+          <Route path="vnpay-sandbox" element={<VnPaySandbox />} />
           <Route
             path="my-bookings"
             element={
@@ -58,6 +67,9 @@ function App() {
           <Route path="calendar" element={<CalendarPage />} />
           <Route path="bookings" element={<AdminBookings />} />
           <Route path="courts" element={<Courts />} />
+          <Route path="customers" element={<AdminCustomers />} />
+          <Route path="vouchers" element={<AdminVouchers />} />
+          <Route path="employees" element={<AdminEmployees />} />
         </Route>
       </Routes>
       <Toaster position="top-right" />

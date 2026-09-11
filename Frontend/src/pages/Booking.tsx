@@ -1,9 +1,9 @@
 import React, { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
-  CalendarDays, Clock, MapPin, User, CheckCircle2, Loader2, Wallet, QrCode,
+  CalendarDays, Clock, MapPin, User, CheckCircle2, Loader2, Wallet, QrCode, Tag
 } from "lucide-react";
 import {
   api, Court, Field, formatCurrency, TIME_SLOTS, getBookedSlots, isSlotConflict,
@@ -26,8 +26,8 @@ export default function Booking() {
 
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
-  const [success, setSuccess] = useState<null | { code: string; paymentMethod: string }>(null);
-  const [showQr, setShowQr] = useState(false);
+  const location = useLocation();
+  const [success, setSuccess] = useState<null | { code: string; paymentMethod: string; checkinQrUrl?: string }>(null);
 
   const [field, setField] = useState<Field | null>(null);
   const [courts, setCourts] = useState<Court[]>([]);
@@ -45,10 +45,43 @@ export default function Booking() {
   const [paymentMethod, setPaymentMethod] = useState<"deposit" | "full">("deposit");
   const [bookedSlots, setBookedSlots] = useState<Awaited<ReturnType<typeof getBookedSlots>>>([]);
 
+  const [endDate, setEndDate] = useState("");
+  const [balls, setBalls] = useState(0);
+  const [bibs, setBibs] = useState(0);
+
+  const recurringDates = useMemo(() => {
+    if (!date) return [];
+    const dates = [date];
+    if (endDate && endDate >= date) {
+      let current = new Date(date);
+      const end = new Date(endDate);
+      while (true) {
+        current.setDate(current.getDate() + 7);
+        if (current > end) break;
+        dates.push(current.toISOString().slice(0, 10));
+      }
+    }
+    return dates;
+  }, [date, endDate]);
+
+  const servicesTotal = (balls * 20000) + (bibs * 10000);
+
+  const [voucherCode, setVoucherCode] = useState("");
+  const [appliedVoucher, setAppliedVoucher] = useState<{ code: string; discountAmount: number; voucherId: number } | null>(null);
+  const [voucherLoading, setVoucherLoading] = useState(false);
+
   const selectedCourt = courts.find((c) => c.id === courtId) || null;
+  const subTotal = useMemo(() => {
+    let cost = 0;
+    if (selectedCourt) {
+      cost = selectedCourt.price * duration * recurringDates.length;
+    }
+    return cost + (servicesTotal * recurringDates.length);
+  }, [selectedCourt, duration, recurringDates.length, servicesTotal]);
+
   const total = useMemo(
-    () => (selectedCourt ? selectedCourt.price * duration : 0),
-    [selectedCourt, duration]
+    () => Math.max(0, subTotal - (appliedVoucher?.discountAmount || 0)),
+    [subTotal, appliedVoucher]
   );
   const deposit = total * 0.3; // 30% deposit
 
@@ -83,14 +116,76 @@ export default function Booking() {
     getBookedSlots(courtId, date).then(setBookedSlots).catch(() => setBookedSlots([]));
   }, [courtId, date]);
 
-  const slotDisabled = (slot: string) =>
-    bookedSlots.some((b) => isSlotConflict(b.time, b.duration, slot, duration));
+  useEffect(() => {
+    if (location.state?.successId) {
+      const code = `BK${String(location.state.successId).padStart(6, "0")}`;
+
+      const payload = location.state.payload;
+      let qrData = `CHECKIN-${code}`;
+      if (payload) {
+        qrData += ` | Sân: ${payload.fieldName} - ${payload.court} | Tên: ${payload.customer.fullName} | ĐT: ${payload.customer.phone}`;
+      }
+
+      const checkinQrUrl = `https://quickchart.io/qr?text=${encodeURIComponent(qrData)}&size=250`;
+      setSuccess({
+        code,
+        paymentMethod: location.state.paymentMethod,
+        checkinQrUrl
+      });
+      // prevent infinite loop by clearing state
+      navigate(location.pathname + location.search, { replace: true, state: {} });
+    }
+  }, [location.state, navigate, location.pathname, location.search]);
+
+  const slotDisabled = (slot: string) => {
+    const isPast = date === new Date().toISOString().slice(0, 10) && new Date(`${date}T${slot}:00`) < new Date();
+    return isPast || bookedSlots.some((b) => isSlotConflict(b.time, b.duration, slot, duration));
+  };
 
   const handleCustomerChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setCustomer((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const applyVoucher = async () => {
+    if (!voucherCode.trim()) return;
+    setVoucherLoading(true);
+    try {
+      const res = await api.get(`/vouchers`, { params: { code: voucherCode.trim().toUpperCase(), status: 'active' } });
+      const vouchers = res.data;
+      if (!vouchers || vouchers.length === 0) {
+        toast.error("Mã giảm giá không hợp lệ hoặc không tồn tại!");
+        setAppliedVoucher(null);
+        return;
+      }
+
+      const v = vouchers[0];
+      if (v.used >= v.limit) {
+        toast.error("Mã giảm giá đã hết luợt sử dụng!");
+        setAppliedVoucher(null);
+        return;
+      }
+
+      let discountAmount = 0;
+      if (v.type === 'percent') {
+        discountAmount = (subTotal * v.discount) / 100;
+      } else {
+        discountAmount = v.discount;
+      }
+
+      setAppliedVoucher({
+        code: v.code,
+        discountAmount,
+        voucherId: v.id
+      });
+      toast.success("Áp dụng mã hợp lệ!");
+    } catch (e) {
+      toast.error("Lỗi khi kiểm tra mã");
+    } finally {
+      setVoucherLoading(false);
+    }
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -130,61 +225,59 @@ export default function Booking() {
       return;
     }
 
-    // Online payment is now required (deposit or full)
-    if (!showQr) {
-      setShowQr(true);
-      return;
-    }
+    const user = getUser();
 
+    // Validate for all dates
     setLoading(true);
     try {
-      const user = getUser();
-      const payload = {
-        fieldId: field.id,
-        courtId: selectedCourt.id,
-        fieldName: field.name,
-        court: selectedCourt.name,
-        date,
-        time,
-        duration,
-        total,
-        customer: {
-          fullName: customer.fullName.trim(),
-          phone: customer.phone.trim(),
-          note: customer.note.trim(),
-          userId: user?.id,
-          email: user?.email,
-        },
-        paymentMethod,
-        paymentStatus: "paid", // They paid the deposit or full online
-        status: "pending", // Lúc mới đặt sân thì trạng thái là chờ xác nhận
-        createdAt: new Date().toISOString(),
-      };
-
-      // re-check conflict
-      const latest = await getBookedSlots(selectedCourt.id, date);
-      if (latest.some((b) => isSlotConflict(b.time, b.duration, time, duration))) {
-        toast.error("Khung giờ vừa được đặt. Chọn giờ khác.");
-        setBookedSlots(latest);
-        setLoading(false);
-        return;
+      for (const d of recurringDates) {
+        const slots = await getBookedSlots(selectedCourt.id, d);
+        if (slots.some((b) => isSlotConflict(b.time, b.duration, time, duration))) {
+          toast.error(`Khung giờ ngày ${d} vừa được đặt. Vui lòng chọn giờ khác.`);
+          if (d === date) setBookedSlots(slots);
+          setLoading(false);
+          return;
+        }
       }
-
-      const res = await api.post("/bookings", payload);
-      setSuccess({
-        code: `BK${String(res.data.id).padStart(6, "0")}`,
-        paymentMethod,
-      });
-      toast.success("Đặt sân thành công!");
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        toast.error("Đặt sân thất bại. Kiểm tra API (npm run db).");
-      } else {
-        toast.error("Có lỗi xảy ra");
-      }
-    } finally {
+    } catch (err) {
+      toast.error("Lỗi khi kiểm tra lịch trống.");
       setLoading(false);
+      return;
     }
+    setLoading(false);
+
+    const services = [];
+    if (balls > 0) services.push({ name: "Bóng", quantity: balls, price: 20000 });
+    if (bibs > 0) services.push({ name: "Áo pitch", quantity: bibs, price: 10000 });
+
+    const payload = {
+      fieldId: field.id,
+      courtId: selectedCourt.id,
+      fieldName: field.name,
+      court: selectedCourt.name,
+      date, // Pass the starting date, backend might need to handle this or we generate an array of payloads
+      recurringDates,
+      time,
+      duration,
+      total,
+      customer: {
+        fullName: customer.fullName.trim(),
+        phone: customer.phone.trim(),
+        note: customer.note.trim(),
+        userId: user?.id,
+        email: user?.email,
+      },
+      services,
+      paymentMethod,
+      paymentStatus: paymentMethod === "deposit" ? "deposit_paid" : "paid", // Đồng bộ trạng thái thanh toán
+      status: "pending", // Lúc mới đặt sân thì trạng thái là chờ xác nhận
+      voucherCode: appliedVoucher?.code || "",
+      discount: appliedVoucher?.discountAmount || 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Navigate to paygate to complete payment online
+    navigate("/paygate", { state: { payload, deposit, total } });
   };
 
   if (loadingData) {
@@ -211,7 +304,9 @@ export default function Booking() {
       <div className="max-w-lg mx-auto py-16 px-4">
         <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-10 text-center">
           <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Đặt sân thành công!</h2>
+          <h2 className="text-2xl font-extrabold text-gray-900 mb-2">
+            {location.state?.isAutoTransfer ? "Chuyển khoản thành công!" : "Đặt sân thành công!"}
+          </h2>
           <p className="text-gray-500 mb-4">
             Mã đơn: <span className="font-bold text-green-700">{success.code}</span>
           </p>
@@ -220,10 +315,17 @@ export default function Booking() {
           ) : (
             <p className="text-sm text-amber-600 mb-6">Đã đặt cọc 30% · Cần admin xác nhận</p>
           )}
-          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-6 inline-block w-full text-center">
-            <QrCode className="w-40 h-40 mx-auto text-gray-800" />
-            <p className="text-xs text-gray-500 mt-2">Mã QR Check-in / Xác minh tại sân</p>
-          </div>
+          {success.checkinQrUrl ? (
+            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-6 inline-block w-full text-center">
+              <img src={success.checkinQrUrl} alt="Check-in QR" className="w-40 h-40 mx-auto object-contain" />
+              <p className="text-xs text-gray-500 mt-2">Mã QR Check-in / Xác minh tại sân</p>
+            </div>
+          ) : (
+            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-6 inline-block w-full text-center">
+              <QrCode className="w-40 h-40 mx-auto text-gray-800" />
+              <p className="text-xs text-gray-500 mt-2">Mã QR Check-in / Xác minh tại sân</p>
+            </div>
+          )}
           <div className="space-y-3">
             <Link
               to="/my-bookings"
@@ -281,18 +383,32 @@ export default function Booking() {
             <h3 className="font-extrabold text-gray-900 mb-4 flex items-center">
               <CalendarDays className="w-4 h-4 mr-2 text-blue-600" /> Ngày & giờ
             </h3>
-            <div className="mb-4">
-              <label className="block text-sm font-semibold text-gray-600 mb-1">Ngày</label>
-              <input
-                type="date"
-                value={date}
-                min={new Date().toISOString().slice(0, 10)}
-                onChange={(e) => {
-                  setDate(e.target.value);
-                  setTime("");
-                }}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500"
-              />
+            <div className="mb-4 grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-600 mb-1">Từ ngày</label>
+                <input
+                  type="date"
+                  value={date}
+                  min={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => {
+                    setDate(e.target.value);
+                    if (endDate && e.target.value > endDate) setEndDate("");
+                    setTime("");
+                  }}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-600 mb-1">Đến ngày (tối đa 3 tháng)</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  min={date || new Date().toISOString().slice(0, 10)}
+                  max={new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString().slice(0, 10)}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500"
+                />
+              </div>
             </div>
             <div className="mb-4">
               <label className="block text-sm font-semibold text-gray-600 mb-2">Khung giờ</label>
@@ -379,6 +495,36 @@ export default function Booking() {
 
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
             <h3 className="font-extrabold text-gray-900 mb-4 flex items-center">
+              <Tag className="w-4 h-4 mr-2 text-blue-600" /> Dịch vụ thêm
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="border border-gray-200 rounded-xl p-4 flex justify-between items-center bg-gray-50/50">
+                <div>
+                  <div className="font-bold text-gray-800 text-sm">Thuê bóng</div>
+                  <div className="text-xs text-blue-600 font-semibold">20.000đ / quả / buổi</div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <button type="button" onClick={() => setBalls(Math.max(0, balls - 1))} className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-300 text-gray-600 font-bold hover:bg-gray-100">-</button>
+                  <span className="font-bold min-w-[20px] text-center">{balls}</span>
+                  <button type="button" onClick={() => setBalls(balls + 1)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-300 text-gray-600 font-bold hover:bg-gray-100">+</button>
+                </div>
+              </div>
+              <div className="border border-gray-200 rounded-xl p-4 flex justify-between items-center bg-gray-50/50">
+                <div>
+                  <div className="font-bold text-gray-800 text-sm">Thuê áo pit (bib)</div>
+                  <div className="text-xs text-blue-600 font-semibold">10.000đ / áo / buổi</div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <button type="button" onClick={() => setBibs(Math.max(0, bibs - 1))} className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-300 text-gray-600 font-bold hover:bg-gray-100">-</button>
+                  <span className="font-bold min-w-[20px] text-center">{bibs}</span>
+                  <button type="button" onClick={() => setBibs(bibs + 1)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-300 text-gray-600 font-bold hover:bg-gray-100">+</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+            <h3 className="font-extrabold text-gray-900 mb-4 flex items-center">
               <Wallet className="w-4 h-4 mr-2 text-blue-600" /> Phương thức thanh toán
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -393,7 +539,6 @@ export default function Booking() {
                     checked={paymentMethod === "deposit"}
                     onChange={() => {
                       setPaymentMethod("deposit");
-                      setShowQr(false);
                     }}
                     className="w-4 h-4"
                   />
@@ -414,7 +559,6 @@ export default function Booking() {
                     checked={paymentMethod === "full"}
                     onChange={() => {
                       setPaymentMethod("full");
-                      setShowQr(false);
                     }}
                     className="w-4 h-4"
                   />
@@ -426,26 +570,7 @@ export default function Booking() {
               </label>
             </div>
 
-            {showQr && (
-              <div className="mt-6 border border-dashed border-blue-300 rounded-2xl p-6 bg-blue-50/40 text-center">
-                <QrCode className="w-12 h-12 text-blue-600 mx-auto mb-3" />
-                <p className="font-bold text-gray-800 mb-1">Quét mã để thanh toán</p>
-                <p className="text-sm text-gray-500 mb-2">
-                  Số tiền cần chuyển: <span className="font-extrabold text-blue-600">
-                    {formatCurrency(paymentMethod === "deposit" ? deposit : total)}
-                  </span>
-                </p>
-                <p className="text-xs text-gray-400 mb-4">
-                  (Demo) Nội dung: DATSAN {field.name} {date} {time}
-                </p>
-                <div className="w-40 h-40 mx-auto bg-white border-2 border-gray-200 rounded-xl flex items-center justify-center mb-4">
-                  <span className="text-4xl">📱</span>
-                </div>
-                <p className="text-xs text-amber-600 mb-3">
-                  Đây là mô phỏng thanh toán với db.json — bấm xác nhận sau khi “đã chuyển”.
-                </p>
-              </div>
-            )}
+
           </div>
         </div>
 
@@ -466,7 +591,7 @@ export default function Booking() {
                   <span className="text-gray-500 flex items-center">
                     <CalendarDays className="w-3.5 h-3.5 mr-1" /> Ngày
                   </span>
-                  <span>{date || "Chưa chọn"}</span>
+                  <span>{date || "Chưa chọn"} {recurringDates.length > 1 && <span className="text-xs text-blue-600 ml-1">({recurringDates.length} buổi)</span>}</span>
                 </div>
                 <div className="flex justify-between border-b border-gray-100 pb-3">
                   <span className="text-gray-500 flex items-center">
@@ -478,7 +603,34 @@ export default function Booking() {
                   <span className="text-gray-500">Thời lượng</span>
                   <span>{duration} giờ</span>
                 </div>
-                <div className="flex justify-between border-b border-gray-100 pb-3">
+
+                <div className="flex justify-between pb-2 pt-2">
+                  <div className="flex w-full space-x-2">
+                    <input
+                      value={voucherCode}
+                      onChange={e => setVoucherCode(e.target.value.toUpperCase())}
+                      placeholder="Mã giảm giá..."
+                      className="border border-gray-200 rounded-xl px-4 py-2 w-full text-sm font-bold text-gray-700 outline-none focus:border-blue-500 uppercase"
+                    />
+                    <button
+                      type="button"
+                      onClick={applyVoucher}
+                      disabled={voucherLoading || !subTotal}
+                      className="bg-gray-800 hover:bg-gray-900 transition-colors text-white px-5 rounded-xl text-sm font-bold whitespace-nowrap disabled:opacity-50 flex items-center justify-center"
+                    >
+                      {voucherLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Áp dụng"}
+                    </button>
+                  </div>
+                </div>
+
+                {appliedVoucher && (
+                  <div className="flex justify-between border-b border-gray-100 pb-3">
+                    <span className="text-gray-500 flex items-center gap-1"><Tag size={14} /> Giảm giá</span>
+                    <span className="text-emerald-500 font-black">-{formatCurrency(appliedVoucher.discountAmount)}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between border-b border-gray-100 pb-3 pt-2">
                   <span className="text-gray-500">Tiền cọc (30%)</span>
                   <span className="text-amber-500 font-bold">{formatCurrency(deposit)}</span>
                 </div>
@@ -502,9 +654,7 @@ export default function Booking() {
                 )}
                 {loading
                   ? "Đang xử lý..."
-                  : !showQr
-                    ? "Tiếp tục thanh toán"
-                    : "Tôi đã thanh toán & Đặt sân"}
+                  : "Thanh toán online (Paygate)"}
               </button>
 
               <button

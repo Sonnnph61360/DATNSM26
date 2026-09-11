@@ -1,0 +1,12 @@
+
+> web502-base@0.0.0 db
+> npx json-server-auth db.json
+
+
+  \{^_^}/ hi!
+
+  Loading db.json
+SyntaxError: Malformed JSON in file: db.json
+Expected double-quoted property name in JSON at position 282 (line 14 column 15)
+    at FileAsync.parse [as deserialize] (<anonymous>)
+    at C:\Users\ASUS\Downloads\DATNSM26-main\DATNSM26-main\Frontend\node_modules\lowdb\adapters\FileAsync.js:41:35

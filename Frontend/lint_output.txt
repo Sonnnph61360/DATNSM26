@@ -1,0 +1,36 @@
+
+> web502-base@0.0.0 lint
+> eslint .
+
+
+C:\Users\ASUS\Downloads\DATNSM26-main\DATNSM26-main\Frontend\src\components\Header.tsx
+  3:3  error  'Search' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\ASUS\Downloads\DATNSM26-main\DATNSM26-main\Frontend\src\pages\Admin\Courts.tsx
+    1:25  error  'Tag' is defined but never used           @typescript-eslint/no-unused-vars
+   34:14  error  'error' is defined but never used         @typescript-eslint/no-unused-vars
+   52:14  error  'error' is defined but never used         @typescript-eslint/no-unused-vars
+   69:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   83:14  error  'error' is defined but never used         @typescript-eslint/no-unused-vars
+  118:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\ASUS\Downloads\DATNSM26-main\DATNSM26-main\Frontend\src\pages\Booking.tsx
+  75:6  warning  React Hook useEffect has a missing dependency: 'courtId'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\ASUS\Downloads\DATNSM26-main\DATNSM26-main\Frontend\src\pages\Home.tsx
+  4:24  error  'Calendar' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\ASUS\Downloads\DATNSM26-main\DATNSM26-main\Frontend\src\pages\Login.tsx
+  12:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  22:18  error  'error' is defined but never used         @typescript-eslint/no-unused-vars
+
+C:\Users\ASUS\Downloads\DATNSM26-main\DATNSM26-main\Frontend\src\pages\MapPage.tsx
+   9:8   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  13:33  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  34:30  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\ASUS\Downloads\DATNSM26-main\DATNSM26-main\Frontend\src\pages\MyBookings.tsx
+  42:6  warning  React Hook useEffect has a missing dependency: 'load'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+✖ 15 problems (13 errors, 2 warnings)
+

@@ -72,7 +72,7 @@ export default function Paygate() {
     }, [tab]);
 
     // Cấu hình Ngân hàng thật của bạn ở đây để QR quét ra chuẩn
-    const BANK_ID = "MB BANK"; // Mbbank, vietcombank, vietinbank, tpbank...
+    const BANK_ID = "MB"; // Mbbank, vietcombank, vietinbank, tpbank...
     const ACCOUNT_NO = "5510355155442";
     const ACCOUNT_NAME = "NGUYEN THANH TU";
     const addInfo = `DATSAN ${payload.customer.phone}`;
