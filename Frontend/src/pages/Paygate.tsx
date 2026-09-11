@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { QrCode, CheckCircle2, Loader2, ArrowLeft, CreditCard, Smartphone } from "lucide-react";
 import { formatCurrency, api } from "../lib/api";
@@ -10,12 +10,8 @@ export default function Paygate() {
     const [loading, setLoading] = useState(false);
     const [tab, setTab] = useState<"momo" | "card" | "transfer">("momo");
 
-    // Card state
-    const [cardNumber, setCardNumber] = useState("");
-    const [cardName, setCardName] = useState("");
-    const [cardExp, setCardExp] = useState("");
-
     const payload = location.state?.payload;
+    const bookingId = location.state?.bookingId as number | undefined;
     const deposit = location.state?.deposit;
     const total = location.state?.total;
 
@@ -31,21 +27,32 @@ export default function Paygate() {
     const handleConfirmPayment = async (isAuto = false) => {
         setLoading(true);
         try {
-            const res = await api.post("/bookings", payload);
+            let orderId = bookingId;
+            if (!orderId) {
+                const res = await api.post("/bookings", payload);
+                orderId = res.data.id;
+            }
 
             if (tab === "card") {
                 const vnpayRes = await api.post("/vnpay/create-url", {
                     amount: amountToPay,
-                    orderId: res.data.id
+                    orderId,
                 });
                 window.location.href = vnpayRes.data.paymentUrl;
                 return;
             }
 
+            if (bookingId) {
+                await api.patch(`/bookings/${bookingId}`, {
+                    paymentStatus: "paid",
+                    status: "confirmed",
+                  });
+            }
+
             toast.success(isAuto && tab === "transfer" ? "Chuyển khoản thành công!" : "Thanh toán & Đặt sân thành công!");
             navigate("/booking", {
                 state: {
-                    successId: res.data.id,
+                    successId: orderId,
                     paymentMethod: payload.paymentMethod,
                     payload,
                     isAutoTransfer: isAuto && tab === "transfer"

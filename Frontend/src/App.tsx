@@ -6,15 +6,28 @@ import Booking from "./pages/Booking";
 import List from "./pages/List";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Blog from "./pages/Blog";
+import BlogDetail from "./pages/BlogDetail";
 import FieldPage from "./pages/FieldPage";
 import MapPage from "./pages/MapPage";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 import MyBookings from "./pages/MyBookings";
+import Profile from "./pages/Profile";
+import Paygate from "./pages/Paygate";
+import PaymentPage from "./pages/PaymentPage";
 import AdminLayout from "./layouts/AdminLayout";
-import AdminBookings from "./pages/admin/AdminBookings";
-import Dashboard from "./pages/admin/Dashboard";
-import Courts from "./pages/admin/Courts";
-import CalendarPage from "./pages/admin/CalendarPage";
+import AdminBookings from "./pages/Admin/AdminBookings";
+import Dashboard from "./pages/Admin/Dashboard";
+import Courts from "./pages/Admin/Courts";
+import CalendarPage from "./pages/Admin/CalendarPage";
+import AdminCustomers from "./pages/Admin/AdminCustomers";
+import AdminVouchers from "./pages/Admin/AdminVouchers";
+import AdminEmployees from "./pages/Admin/AdminEmployees";
 import ClientLayout from "./layouts/ClientLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -32,6 +45,21 @@ function App() {
           <Route path="map" element={<MapPage />} />
           <Route path="ban-do" element={<MapPage />} />
           <Route path="blog" element={<Blog />} />
+          <Route path="blog/:id" element={<BlogDetail />} />
+          <Route path="about" element={<About />} />
+          <Route path="contact" element={<Contact />} />
+          <Route path="terms" element={<Terms />} />
+          <Route path="privacy" element={<Privacy />} />
+          <Route path="paygate" element={<Paygate />} />
+          <Route path="payment/:bookingId" element={<PaymentPage />} />
+          <Route
+            path="profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="my-bookings"
             element={
@@ -44,6 +72,8 @@ function App() {
 
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         <Route
           path="/admin"
@@ -58,6 +88,9 @@ function App() {
           <Route path="calendar" element={<CalendarPage />} />
           <Route path="bookings" element={<AdminBookings />} />
           <Route path="courts" element={<Courts />} />
+          <Route path="customers" element={<AdminCustomers />} />
+          <Route path="vouchers" element={<AdminVouchers />} />
+          <Route path="employees" element={<AdminEmployees />} />
         </Route>
       </Routes>
       <Toaster position="top-right" />

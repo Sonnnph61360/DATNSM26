@@ -1,9 +1,21 @@
 import { Router } from "express";
-import { login, register, listUsers } from "../controllers/auth";
+import {
+	login,
+	register,
+	listUsers,
+	forgotPassword,
+	resetPassword,
+} from "../controllers/auth";
+import { authRequired } from "../middleware/auth";
+import { updateProfile, changePassword } from "../controllers/auth";
 
 const router = Router();
 router.post("/login", login);
 router.post("/register", register);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
 router.get("/users", listUsers);
+router.patch("/users/:id", authRequired, updateProfile);
+router.patch("/users/:id/password", authRequired, changePassword);
 
 export default router;

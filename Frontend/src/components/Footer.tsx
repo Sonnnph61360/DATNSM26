@@ -29,20 +29,19 @@ export default function Footer() {
                     <div>
                         <h3 className="text-white font-bold mb-4 uppercase tracking-wider text-xs">Khám phá</h3>
                         <ul className="space-y-3">
-                            <li><Link to="#" className="hover:text-white transition">Tìm sân</Link></li>
-                            <li><Link to="#" className="hover:text-white transition">Bản đồ</Link></li>
-                            <li><Link to="#" className="hover:text-white transition">Blog</Link></li>
+                            <li><Link to="/fields" className="hover:text-white transition">Tìm sân</Link></li>
+                            <li><Link to="/map" className="hover:text-white transition">Bản đồ</Link></li>
+                            <li><Link to="/blog" className="hover:text-white transition">Blog</Link></li>
+                            <li><Link to="/about" className="hover:text-white transition">Giới thiệu</Link></li>
                         </ul>
                     </div>
 
                     <div>
                         <h3 className="text-white font-bold mb-4 uppercase tracking-wider text-xs">Hỗ trợ</h3>
                         <ul className="space-y-3">
-                            <li><Link to="#" className="hover:text-white transition">Hướng dẫn đặt sân</Link></li>
-                            <li><Link to="#" className="hover:text-white transition">Câu hỏi thường gặp</Link></li>
-                            <li><Link to="#" className="hover:text-white transition">Liên hệ</Link></li>
-                            <li><Link to="#" className="hover:text-white transition">Chính sách hoàn tiền</Link></li>
-                            <li><Link to="#" className="hover:text-white transition">Điều khoản sử dụng</Link></li>
+                            <li><Link to="/contact" className="hover:text-white transition">Liên hệ</Link></li>
+                            <li><Link to="/terms" className="hover:text-white transition">Điều khoản</Link></li>
+                            <li><Link to="/privacy" className="hover:text-white transition">Chính sách</Link></li>
                         </ul>
                     </div>
 

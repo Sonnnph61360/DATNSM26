@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Search, Map, MapPin, Calendar, Globe, Activity, Medal, ChevronDown, Loader2,
+  Search, Map, MapPin, Globe, Activity, Medal, ChevronDown, Loader2,
 } from "lucide-react";
 import banner2 from "../assets/banner2.jpg";
 import { fetchFields, Field, formatCurrency } from "../lib/api";

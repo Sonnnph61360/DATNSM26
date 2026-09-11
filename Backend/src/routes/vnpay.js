@@ -28,7 +28,6 @@ router.post("/create-url", (req, res) => {
     const secretKey = "RMBXMXZIVOMZUSLOHLUKROVOTLWHNUIZ";
     // Error 72 occurs because public VNPAY keys often expire or get blocked.
     // Instead of real VNPAY URL, we redirect to a local simulated VNPAY page for demonstration:
-    const vnpUrl = "http://localhost:5173/vnpay-sandbox";
     const returnUrl = "http://localhost:5173/vnpay-return";
 
     const date = new Date();

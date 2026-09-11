@@ -11,6 +11,7 @@ import courtRouter from "./routes/court";
 import bookingRouter from "./routes/booking";
 import voucherRouter from "./routes/voucher";
 import vnpayRouter from "./routes/vnpay";
+import sepayRouter from "./routes/sepay";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -35,6 +36,7 @@ app.use("/courts", courtRouter);
 app.use("/bookings", bookingRouter);
 app.use("/vouchers", voucherRouter);
 app.use("/vnpay", vnpayRouter);
+app.use("/sepay", sepayRouter);
 
 // alias /api/*
 app.use("/api", authRouter);
@@ -43,6 +45,7 @@ app.use("/api/courts", courtRouter);
 app.use("/api/bookings", bookingRouter);
 app.use("/api/vouchers", voucherRouter);
 app.use("/api/vnpay", vnpayRouter);
+app.use("/api/sepay", sepayRouter);
 
 app.get("/", (_req, res) => {
   res.json({

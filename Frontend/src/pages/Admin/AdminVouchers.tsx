@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { Table, Button, Input, Modal, Form, Select, InputNumber, Switch, message, Spin, Tag, Card } from "antd";
-import { Ticket, Plus, Search, Tag as TagIcon, Percent, DollarSign } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Table, Button, Input, Modal, Form, Select, InputNumber, Switch, message, Spin } from "antd";
+import { Ticket, Plus, Search, Percent, DollarSign } from "lucide-react";
 import { api, formatCurrency } from "../../lib/api";
-import { formatDateVi } from "../../lib/locale";
 
 interface Voucher {
     id: number;
