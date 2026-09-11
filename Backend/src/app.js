@@ -3,17 +3,14 @@ import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import { connectDB } from "./config/db";
+import path from "path";
 
 import authRouter from "./routes/auth";
 import fieldRouter from "./routes/field";
 import courtRouter from "./routes/court";
 import bookingRouter from "./routes/booking";
-
-console.log("EMAIL_USER =", process.env.EMAIL_USER);
-console.log(
-  "EMAIL_PASS =",
-  process.env.EMAIL_PASS ? "ĐÃ LOAD" : "CHƯA LOAD"
-);
+import voucherRouter from "./routes/voucher";
+import vnpayRouter from "./routes/vnpay";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,18 +33,22 @@ app.use(authRouter); // /login /register /users
 app.use("/fields", fieldRouter);
 app.use("/courts", courtRouter);
 app.use("/bookings", bookingRouter);
+app.use("/vouchers", voucherRouter);
+app.use("/vnpay", vnpayRouter);
 
 // alias /api/*
 app.use("/api", authRouter);
 app.use("/api/fields", fieldRouter);
 app.use("/api/courts", courtRouter);
 app.use("/api/bookings", bookingRouter);
+app.use("/api/vouchers", voucherRouter);
+app.use("/api/vnpay", vnpayRouter);
 
 app.get("/", (_req, res) => {
   res.json({
     name: "DATN SM26 API",
     status: "ok",
-    endpoints: ["/login", "/register", "/fields", "/courts", "/bookings"],
+    endpoints: ["/login", "/register", "/fields", "/courts", "/bookings", "/vouchers"],
   });
 });
 

@@ -7,6 +7,7 @@ import User from "./models/User";
 import Field from "./models/Field";
 import Court from "./models/Court";
 import Booking from "./models/Booking";
+import Voucher from "./models/Voucher";
 import { setCounter } from "./utils/ids";
 
 const MONGODB_URI =
@@ -35,6 +36,7 @@ export async function runSeed(disconnect = true) {
     Field.deleteMany({}),
     Court.deleteMany({}),
     Booking.deleteMany({}),
+    Voucher.deleteMany({}),
   ]);
 
   for (const u of data.users || []) {
@@ -70,6 +72,10 @@ export async function runSeed(disconnect = true) {
     });
   }
 
+  for (const v of data.vouchers || []) {
+    await Voucher.create({ ...v });
+  }
+
   const max = (arr, key = "id") =>
     arr && arr.length ? Math.max(...arr.map((x) => Number(x[key]) || 0)) : 0;
 
@@ -77,10 +83,12 @@ export async function runSeed(disconnect = true) {
   await setCounter("fields", max(data.fields));
   await setCounter("courts", max(data.courts));
   await setCounter("bookings", max(data.bookings));
+  await setCounter("vouchers", max(data.vouchers));
   console.log("Seed done. Admin: admin@gmail.com / 123456");
   if (disconnect) await mongoose.disconnect();
 }
 
+// Nếu chạy file trực tiếp
 if (require.main === module) {
   mongoose.connect(MONGODB_URI).then(() => runSeed(true)).catch(e => {
     console.error(e); process.exit(1);
