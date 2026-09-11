@@ -14,6 +14,8 @@ import {
   CalendarOutlined,
   ArrowRightOutlined,
 } from "@ant-design/icons";
+import { Link, useNavigate } from "react-router-dom";
+import { blogs } from "./blogData";
 
 import "./blog.css";
 
@@ -21,37 +23,9 @@ const { Content } = Layout;
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
 
-const blogs = [
-  {
-    id: 1,
-    title: "Top 10 phần mềm quản lý sân tốt nhất",
-    category: "Phần mềm",
-    image:
-      "https://munichgroup.vn/wp-content/uploads/san-bong-ro-dep-9-1.webp",
-    desc: "Mẫu sân bóng rổ đẹp – sành điệu được giới trẻ yêu thích.",
-    date: "31/07/2026",
-  },
-  {
-    id: 2,
-    title: "Kinh nghiệm kinh doanh sân bóng rổ hiệu quả",
-    category: "Kinh doanh",
-    image:
-      "https://bizweb.dktcdn.net/100/180/757/files/kich-thuoc-san-bong-ro-tre-em-la-bao-nhieu.jpg?v=1531377224399",
-    desc: "Những kinh nghiệm giúp tăng doanh thu sân bóng.",
-    date: "30/07/2026",
-  },
-  {
-    id: 3,
-    title: "Xu hướng sân bóng rổ năm 2026",
-    category: "Xu hướng",
-    image:
-      "https://www.myuc.vn/uploads/products/2023/03/24/3.jpg",
-    desc: "Những xu hướng nổi bật trong ngành thể thao.",
-    date: "29/07/2026",
-  },
-];
-
 export default function Blog() {
+  const navigate = useNavigate();
+
   return (
     <Layout style={{ background: "#f5f5f5" }}>
 
@@ -89,6 +63,7 @@ export default function Blog() {
 
                   <Card
                     hoverable
+                    onClick={() => navigate(`/blog/${item.id}`)}
                     cover={
                       <img
                         alt=""
@@ -155,7 +130,9 @@ export default function Blog() {
                 dataSource={blogs}
                 renderItem={(item) => (
                   <List.Item>
-                    {item.title}
+                    <Link to={`/blog/${item.id}`} className="text-gray-700 hover:text-green-600">
+                      {item.title}
+                    </Link>
                   </List.Item>
                 )}
               />

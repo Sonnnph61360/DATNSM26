@@ -1,6 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
 import {
-  Search,
   Map,
   BookOpen,
   LogIn,
@@ -104,10 +103,17 @@ export default function Header() {
               </button>
 
               <div className="flex items-center gap-1.5 text-sm font-medium text-gray-700 max-w-[100px] truncate">
-                <User className="w-4 h-4 text-blue-600 shrink-0" />
-                <span className="hidden md:inline truncate">
-                  {user?.fullName || user?.email}
-                </span>
+                <Link
+                  to="/profile"
+                  className="flex items-center gap-1.5 hover:text-blue-600 transition-colors"
+                  title="Tài khoản"
+                >
+                  <User className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span className="hidden md:inline truncate">
+                    {user?.fullName || user?.email}
+                  </span>
+                  <span className="hidden sm:inline">Tài khoản</span>
+                </Link>
               </div>
               <button
                 type="button"

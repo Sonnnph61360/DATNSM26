@@ -1,9 +1,9 @@
-import React, { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
-  CalendarDays, Clock, MapPin, User, CheckCircle2, Loader2, Wallet, QrCode,
+  CalendarDays, Clock, MapPin, User, Loader2, Wallet, QrCode,
 } from "lucide-react";
 import {
   api, Court, Field, formatCurrency, TIME_SLOTS, getBookedSlots, isSlotConflict,
@@ -26,7 +26,6 @@ export default function Booking() {
 
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
-  const [success, setSuccess] = useState<null | { code: string; paymentMethod: string }>(null);
   const [showQr, setShowQr] = useState(false);
 
   const [field, setField] = useState<Field | null>(null);
@@ -171,11 +170,8 @@ export default function Booking() {
       }
 
       const res = await api.post("/bookings", payload);
-      setSuccess({
-        code: `BK${String(res.data.id).padStart(6, "0")}`,
-        paymentMethod,
-      });
-      toast.success("Đặt sân thành công!");
+      toast.success("Đặt sân đã được tạo. Tiếp tục thanh toán SePay.");
+      navigate(`/payment/${res.data.id}`);
     } catch (error) {
       if (axios.isAxiosError(error)) {
         toast.error("Đặt sân thất bại. Kiểm tra API (npm run db).");
@@ -202,40 +198,6 @@ export default function Booking() {
         <Link to="/fields" className="text-blue-600 font-bold">
           Tìm sân ngay →
         </Link>
-      </div>
-    );
-  }
-
-  if (success) {
-    return (
-      <div className="max-w-lg mx-auto py-16 px-4">
-        <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-10 text-center">
-          <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Đặt sân thành công!</h2>
-          <p className="text-gray-500 mb-4">
-            Mã đơn: <span className="font-bold text-green-700">{success.code}</span>
-          </p>
-          {paymentMethod === "full" ? (
-            <p className="text-sm text-green-600 mb-6">Đã thanh toán 100% · Cần admin xác nhận</p>
-          ) : (
-            <p className="text-sm text-amber-600 mb-6">Đã đặt cọc 30% · Cần admin xác nhận</p>
-          )}
-          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-6 inline-block w-full text-center">
-            <QrCode className="w-40 h-40 mx-auto text-gray-800" />
-            <p className="text-xs text-gray-500 mt-2">Mã QR Check-in / Xác minh tại sân</p>
-          </div>
-          <div className="space-y-3">
-            <Link
-              to="/my-bookings"
-              className="block w-full bg-blue-600 text-white py-3 rounded-xl font-bold"
-            >
-              Xem đơn của tôi
-            </Link>
-            <Link to="/" className="block w-full border border-gray-200 py-3 rounded-xl font-bold text-gray-600">
-              Về trang chủ
-            </Link>
-          </div>
-        </div>
       </div>
     );
   }

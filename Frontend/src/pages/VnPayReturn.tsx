@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, Link } from "react-router-dom";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { api } from "../lib/api";
 
 export default function VnPayReturn() {
     const location = useLocation();
-    const navigate = useNavigate();
     const [status, setStatus] = useState<"loading" | "success" | "failed">("loading");
     const [bookingId, setBookingId] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string>("");

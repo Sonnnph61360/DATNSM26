@@ -94,6 +94,12 @@ function Login() {
 
                 </Form>
 
+                <div className="mt-4 text-right">
+                    <Link to="/forgot-password" className="text-sm font-semibold text-green-600 hover:text-green-700">
+                        Quên mật khẩu?
+                    </Link>
+                </div>
+
                 <p className="mt-6 text-center">
                     Chưa có tài khoản?
 

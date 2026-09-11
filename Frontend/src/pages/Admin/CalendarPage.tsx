@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Calendar, Badge, Spin, Card, Tag } from "antd";
+import { Calendar, Badge, Spin } from "antd";
 import type { Dayjs } from "dayjs";
 import { api, Booking } from "../../lib/api";
-import { Calendar as CalendarIcon, Info } from "lucide-react";
+import { Info } from "lucide-react";
 
 export default function CalendarPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);

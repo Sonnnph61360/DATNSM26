@@ -1,9 +1,8 @@
-import React, { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useLocation } from "react-router-dom";
 
 export default function VnPaySandbox() {
     const location = useLocation();
-    const navigate = useNavigate();
     const searchParams = new URLSearchParams(location.search);
 
     const amount = Number(searchParams.get("vnp_Amount") || 0) / 100;
