@@ -19,7 +19,6 @@ import Privacy from "./pages/Privacy";
 import MyBookings from "./pages/MyBookings";
 import Profile from "./pages/Profile";
 import Paygate from "./pages/Paygate";
-import PaymentPage from "./pages/PaymentPage";
 import AdminLayout from "./layouts/AdminLayout";
 import AdminBookings from "./pages/Admin/AdminBookings";
 import Dashboard from "./pages/Admin/Dashboard";
@@ -51,7 +50,6 @@ function App() {
           <Route path="terms" element={<Terms />} />
           <Route path="privacy" element={<Privacy />} />
           <Route path="paygate" element={<Paygate />} />
-          <Route path="payment/:bookingId" element={<PaymentPage />} />
           <Route
             path="profile"
             element={
