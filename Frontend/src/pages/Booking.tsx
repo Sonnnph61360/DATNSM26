@@ -16,7 +16,7 @@ const DURATIONS = [
   { label: "2 giờ", value: 2 },
 ];
 
-const CLOSING_TIME = 22; // Sân đóng cửa lúc 22:00
+const CLOSING_TIME = 21;
 
 export default function Booking() {
   const navigate = useNavigate();
