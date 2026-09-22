@@ -115,7 +115,7 @@ export default function FieldPage() {
             <SelectBox
               value={sport}
               onChange={setSport}
-              options={sports.map((s) => ({ value: s, label: s === "all" ? "⚽ Tất cả bộ môn" : s }))}
+              options={sports.map((s) => ({ value: s, label: s === "all" ? "⚽ Tất cả loại sân" : s }))}
               placeholder="Bộ môn"
             />
 

@@ -106,11 +106,9 @@ export default function Home() {
                   onChange={(e) => setSportType(e.target.value)}
                   className="w-full bg-black border border-white/10 focus:border-yellow-500 text-white text-sm rounded-xl px-4 py-3.5 outline-none transition-all appearance-none"
                 >
-                  <option value="">Tất cả môn</option>
-                  <option>Bóng rổ</option>
-                  <option>Bóng đá 5x5</option>
-                  <option>Bóng đá 7x7</option>
-                  <option>Cầu lông</option>
+                  <option value="">Tất cả sân</option>
+                  <option>Bóng rổ 3x3</option>
+                  <option>Bóng rổ 5x5</option>
                 </select>
               </div>
               <div className="md:col-span-3">
