@@ -3,7 +3,7 @@ import { Html5QrcodeScanner } from 'html5-qrcode';
 
 interface QRScannerProps {
   onScanSuccess: (decodedText: string) => void;
-  onScanError?: (error: any) => void;
+  onScanError?: (error: unknown) => void;
 }
 
 export const QRScanner: React.FC<QRScannerProps> = ({ onScanSuccess, onScanError }) => {
@@ -15,17 +15,17 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onScanSuccess, onScanError
     );
 
     scanner.render(
-      (decodedText) => {
+      (decodedText: string) => {
         onScanSuccess(decodedText);
         scanner.clear(); // Tự động tắt camera sau khi quét thành công
       },
-      (error) => {
+      (error: unknown) => {
         if (onScanError) onScanError(error);
       }
     );
 
     return () => {
-      scanner.clear().catch((error) => console.error("Failed to clear scanner", error));
+      scanner.clear().catch((error: unknown) => console.error("Failed to clear scanner", error));
     };
   }, [onScanSuccess, onScanError]);
 

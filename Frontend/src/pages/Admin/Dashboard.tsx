@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Col, Row, Spin, Table } from "antd";
-import { DollarSign, CalendarCheck, Users, TrendingUp, Sparkles, Activity, ShieldCheck } from "lucide-react";
+import { DollarSign, CalendarCheck, Users, TrendingUp, Sparkles, Activity } from "lucide-react";
 import { api, Booking, Court, Field, formatCurrency } from "../../lib/api";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 

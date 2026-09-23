@@ -1,6 +1,6 @@
 import { Layout, Menu, Avatar, Dropdown } from 'antd';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, CalendarDays, ClipboardList, MapPin, LogOut, Bell, Settings, User, Ticket, Shield, Sparkles } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, ClipboardList, MapPin, LogOut, Bell, Settings, User, Ticket, Shield } from 'lucide-react';
 
 const { Header, Sider, Content } = Layout;
 
