@@ -13,7 +13,7 @@ import {
 } from "../data/marketplaceMock";
 
 const quickActions = [
-  { to: "/fields", icon: Search, title: "Tìm sân phù hợp", description: "Lọc theo khu vực và thời gian" },
+  { to: "/fields", icon: Search, title: "Tìm sân phù hợp", description: "Lọc theo khu vực và thời gian." },
   { to: "/map", icon: Map, title: "Khám phá quanh bạn", description: "Xem vị trí sân trên bản đồ" },
   { to: "/my-bookings", icon: CalendarCheck2, title: "Quản lý lịch chơi", description: "Theo dõi mọi đơn đặt sân" },
   { to: "/about", icon: ShieldCheck, title: "Đặt sân an tâm", description: "Thông tin và giá được minh bạch" },
