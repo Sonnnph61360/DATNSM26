@@ -1,12 +1,10 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { Table, Select, message, Spin, Button, Input, Modal, Form, DatePicker, TimePicker, InputNumber, Divider } from "antd";
 import { QrCode, Filter, CheckCircle2, CreditCard, Banknote, RefreshCcw, Download, Plus, Zap } from "lucide-react";
 import { api, type Booking, formatCurrency, formatSlotRange, Court } from "../../lib/api";
 import * as XLSX from 'xlsx';
 import { formatDateVi } from "../../lib/locale";
-import { Html5QrcodeScanner } from "html5-qrcode";
-import { QRScanner } from ".././QRScanner"; // Chỉnh lại đường dẫn tới file QRScanner.tsx c
-
+// code fix llỗi sau
 export default function AdminBookings() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,9 +14,6 @@ export default function AdminBookings() {
   const [isPosOpen, setIsPosOpen] = useState(false);
   const [courts, setCourts] = useState<Court[]>([]);
   const [posForm] = Form.useForm();
-
-  // Ref lưu instance của Scanner để hủy khi đóng Modal
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   const fetchBookings = async () => {
     try {
@@ -60,6 +55,9 @@ export default function AdminBookings() {
   const handlePosSubmit = async (values: any) => {
     try {
       const st = values.time.format('HH:mm');
+      const [h, m] = st.split(':').map(Number);
+      const endTime = `${String(h + values.duration).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+
       const court = courts.find(c => c.id === values.courtId);
       await api.post('/bookings', {
         fieldId: court?.fieldId || 1,
@@ -135,7 +133,7 @@ export default function AdminBookings() {
 
   const handleQrCheckIn = async (qrValue: string) => {
     if (!qrValue) return;
-    const match = qrValue.match(/CHECKIN-BK(\d+)/i) || qrValue.match(/(\d+)/);
+    const match = qrValue.match(/CHECKIN-BK(\d+)/i);
     if (!match) {
       message.error("Mã QR không hợp lệ. Vui lòng quét lại.");
       return;
@@ -158,37 +156,7 @@ export default function AdminBookings() {
     await markCheckIn(id);
   };
 
-  // Quản lý việc Render/Tắt Camera trong Modal Quét QR
-  useEffect(() => {
-    if (isScannerOpen) {
-      const timeoutId = setTimeout(() => {
-        const scanner = new Html5QrcodeScanner(
-          "qr-reader",
-          { fps: 10, qrbox: { width: 250, height: 250 } },
-          false
-        );
-        scannerRef.current = scanner;
 
-        scanner.render(
-          (decodedText) => {
-            handleQrCheckIn(decodedText);
-            closeScanner();
-          },
-          () => {}
-        );
-      }, 200);
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [isScannerOpen]);
-
-  const closeScanner = () => {
-    if (scannerRef.current) {
-      scannerRef.current.clear().catch((err) => console.error("Lỗi khi tắt camera:", err));
-      scannerRef.current = null;
-    }
-    setIsScannerOpen(false);
-  };
 
   const columns = [
     {
@@ -319,6 +287,36 @@ export default function AdminBookings() {
     );
   }
 
+  const openScanner = () => {
+    setIsScannerOpen(true);
+    setTimeout(() => {
+      // @ts-ignore
+      if (window.Html5QrcodeScanner) {
+        // @ts-ignore
+        const html5QrcodeScanner = new window.Html5QrcodeScanner(
+          "qr-reader",
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          /* verbose= */ false
+        );
+        html5QrcodeScanner.render((decodedText: string) => {
+          handleQrCheckIn(decodedText);
+          html5QrcodeScanner.clear();
+          setIsScannerOpen(false);
+        }, () => { });
+      } else {
+        message.error("Thư viện quét mã QR chưa được tải.");
+      }
+    }, 100);
+  };
+
+  const closeScanner = () => {
+    setIsScannerOpen(false);
+    try {
+      const el = document.getElementById("qr-reader");
+      if (el) el.innerHTML = "";
+    } catch (e) { }
+  };
+
   const filteredBookings = bookings.filter(b => {
     const matchesSearch = b.customer?.phone?.includes(searchText) || b.customer?.fullName?.toLowerCase().includes(searchText.toLowerCase()) || `BK${String(b.id).padStart(6, "0")}`.includes(searchText.toUpperCase());
     const matchesStatus = statusFilter === 'all' || b.status === statusFilter;
@@ -345,7 +343,7 @@ export default function AdminBookings() {
             <Download className="w-5 h-5 mr-2 text-emerald-600" />
             Xuất Excel
           </Button>
-          <Button size="large" type="primary" onClick={() => setIsScannerOpen(true)} className="bg-white text-blue-600 shadow-sm border border-blue-600 font-bold px-4 flex items-center hover:bg-blue-50 rounded-xl h-12">
+          <Button size="large" type="primary" onClick={openScanner} className="bg-white text-blue-600 shadow-sm border border-blue-600 font-bold px-4 flex items-center hover:bg-blue-50 rounded-xl h-12">
             <QrCode className="w-5 h-5 mr-2" />
             Quét QR Check-in
           </Button>
