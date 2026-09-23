@@ -8,6 +8,10 @@ import {
 import banner2 from "../assets/banner2.jpg";
 import { fetchFields, Field, formatCurrency } from "../lib/api";
 import { blogs } from "./blogData";
+import {
+  clubs, locationOptions, rankings, tournaments,
+} from "../data/marketplaceMock";
+
 const quickActions = [
   { to: "/fields", icon: Search, title: "Tìm sân phù hợp", description: "Lọc theo khu vực và thời gian" },
   { to: "/map", icon: Map, title: "Khám phá quanh bạn", description: "Xem vị trí sân trên bản đồ" },
@@ -15,11 +19,18 @@ const quickActions = [
   { to: "/about", icon: ShieldCheck, title: "Đặt sân an tâm", description: "Thông tin và giá được minh bạch" },
 ];
 
+const clubTone = {
+  navy: "bg-slate-950 text-yellow-400",
+  amber: "bg-amber-400 text-slate-950",
+  emerald: "bg-emerald-600 text-white",
+  blue: "bg-sky-600 text-white",
+};
 
 export default function Home() {
   const [fields, setFields] = useState<Field[]>([]);
   const [loading, setLoading] = useState(true);
   const [city, setCity] = useState("Hồ Chí Minh");
+  const [district, setDistrict] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const navigate = useNavigate();
   const location = useLocation();
@@ -40,7 +51,7 @@ export default function Home() {
   const handleSearch = (event: React.FormEvent) => {
     event.preventDefault();
     const params = new URLSearchParams();
-    params.set("q", city);
+    params.set("q", district ? `${district}, ${city}` : city);
     if (date) params.set("date", date);
     navigate(`/fields?${params.toString()}`);
   };
@@ -103,22 +114,31 @@ export default function Home() {
               <Map className="h-4 w-4" /> Xem bản đồ
             </Link>
           </div>
-          <form onSubmit={handleSearch} className="grid grid-cols-1 items-end gap-3 md:grid-cols-2 lg:grid-cols-5">
-            <label className="lg:col-span-2">
-              <span className="mb-2 flex items-center gap-1.5 text-xs font-bold text-slate-500"><MapPin className="h-3.5 w-3.5" /> Khu vực</span>
-              <input
-                type="text"
+          <form onSubmit={handleSearch} className="grid grid-cols-1 items-end gap-3 md:grid-cols-2 lg:grid-cols-10">
+            <label className="lg:col-span-3">
+              <span className="mb-2 flex items-center gap-1.5 text-xs font-bold text-slate-500"><MapPin className="h-3.5 w-3.5" /> Tỉnh / thành phố</span>
+              <select
                 value={city}
-                onChange={(event) => setCity(event.target.value)}
-                placeholder="Nhập khu vực muốn chơi"
+                onChange={(event) => {
+                  setCity(event.target.value);
+                  setDistrict("");
+                }}
                 className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100"
-              />
+              >
+                {Object.keys(locationOptions).map((location) => <option key={location}>{location}</option>)}
+              </select>
+            </label>
+            <label className="lg:col-span-2">
+              <span className="mb-2 flex items-center gap-1.5 text-xs font-bold text-slate-500"><MapPin className="h-3.5 w-3.5" /> Quận / huyện</span>
+              <select value={district} onChange={(event) => setDistrict(event.target.value)} className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100">
+                {locationOptions[city].map((area, index) => <option key={area} value={index === 0 ? "" : area}>{area}</option>)}
+              </select>
             </label>
             <label className="lg:col-span-2">
               <span className="mb-2 flex items-center gap-1.5 text-xs font-bold text-slate-500"><CalendarDays className="h-3.5 w-3.5" /> Ngày chơi</span>
               <input type="date" value={date} min={new Date().toISOString().slice(0, 10)} onChange={(event) => setDate(event.target.value)} className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100" />
             </label>
-            <button type="submit" className="btn-primary flex h-12 items-center justify-center gap-2 rounded-xl px-5 text-sm font-extrabold">
+            <button type="submit" className="btn-primary flex h-12 items-center justify-center gap-2 rounded-xl px-5 text-sm font-extrabold lg:col-span-2">
               <Search className="h-4 w-4" /> Tìm sân
             </button>
           </form>
@@ -229,6 +249,120 @@ export default function Home() {
               ))}
             </div>
           )}
+        </div>
+      </section>
+
+      <section id="clubs" className="scroll-mt-32 px-4 py-16 sm:py-24">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-10 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Cộng đồng bóng rổ</p>
+              <h2 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-950">Câu lạc bộ gần bạn</h2>
+              <p className="mt-3 text-slate-500">Tìm đồng đội, tham gia buổi tập và không còn phải chơi một mình.</p>
+            </div>
+            <Link to="/clubs" className="inline-flex items-center gap-2 font-bold text-slate-700 hover:text-amber-600">Xem tất cả CLB <ChevronRight className="h-5 w-5" /></Link>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {clubs.map((club) => (
+              <article key={club.id} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg">
+                <div className={`flex h-16 w-16 items-center justify-center rounded-2xl text-lg font-black shadow-sm ${clubTone[club.tone]}`}>{club.initials}</div>
+                <p className="mt-6 text-xs font-bold uppercase tracking-wider text-amber-600">{club.sport}</p>
+                <h3 className="mt-1 text-xl font-extrabold text-slate-950">{club.name}</h3>
+                <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-500"><MapPin className="h-4 w-4" /> {club.area}</p>
+                <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-5 text-sm">
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-slate-600"><Users className="h-4 w-4" /> {club.members} thành viên</span>
+                  <span className="inline-flex items-center gap-1 font-bold text-slate-800"><Star className="h-4 w-4 fill-amber-400 text-amber-400" /> {club.rating}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="tournaments" className="scroll-mt-32 bg-slate-950 px-4 py-16 text-white sm:py-24">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-10 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-yellow-400">Thi đấu & kết nối</p>
+              <h2 className="mt-2 text-4xl font-extrabold tracking-tight">Giải đấu sắp diễn ra</h2>
+              <p className="mt-3 text-slate-400">Đăng ký đội, theo dõi lịch và chinh phục bảng xếp hạng.</p>
+            </div>
+            <Link to="/tournaments" className="inline-flex items-center gap-2 font-bold text-slate-200 hover:text-yellow-400">Xem tất cả giải <ChevronRight className="h-5 w-5" /></Link>
+          </div>
+          <div className="grid gap-6 lg:grid-cols-3">
+            {tournaments.map((tournament) => (
+              <article key={tournament.id} className="group overflow-hidden rounded-3xl border border-white/10 bg-white/[0.06]">
+                <div className="relative h-52 overflow-hidden">
+                  <img src={tournament.image} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+                  <span className="absolute left-4 top-4 rounded-full bg-emerald-500 px-3 py-1.5 text-[11px] font-extrabold text-white">{tournament.status}</span>
+                  <span className="absolute bottom-4 left-4 text-xs font-bold uppercase tracking-[0.14em] text-yellow-300">{tournament.sport}</span>
+                </div>
+                <div className="p-6">
+                  <h3 className="text-2xl font-extrabold leading-tight">{tournament.name}</h3>
+                  <div className="mt-5 space-y-2 text-sm text-slate-400">
+                    <p className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-yellow-400" /> {tournament.date}</p>
+                    <p className="flex items-center gap-2"><MapPin className="h-4 w-4 text-yellow-400" /> {tournament.location}</p>
+                    <p className="flex items-center gap-2"><Users className="h-4 w-4 text-yellow-400" /> {tournament.teams} đội tham dự</p>
+                  </div>
+                  <Link to="/contact" className="mt-6 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white text-sm font-extrabold text-slate-950 transition-colors hover:bg-yellow-400">
+                    Xem thông tin giải <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="rankings" className="scroll-mt-32 bg-white px-4 py-16 sm:py-24">
+        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.08fr_0.92fr]">
+          <div>
+            <div className="mb-7">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-600">Phong độ mùa giải</p>
+              <h2 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-950">Bảng xếp hạng CLB</h2>
+            </div>
+            <div className="overflow-hidden rounded-3xl border border-slate-200">
+              <div className="grid grid-cols-[32px_minmax(0,1fr)_44px_48px] gap-2 bg-slate-950 px-3 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-400 sm:grid-cols-[44px_minmax(0,1fr)_48px_48px_48px_64px] sm:px-4">
+                <span>#</span><span className="text-left">Câu lạc bộ</span><span>Trận</span><span className="hidden sm:block">Thắng</span><span className="hidden sm:block">Thua</span><span>Điểm</span>
+              </div>
+              {rankings.map((team) => (
+                <div key={team.rank} className="grid grid-cols-[32px_minmax(0,1fr)_44px_48px] items-center gap-2 border-t border-slate-100 px-3 py-4 text-center text-sm first:border-t-0 sm:grid-cols-[44px_minmax(0,1fr)_48px_48px_48px_64px] sm:px-4">
+                  <span className={`font-black ${team.rank <= 3 ? "text-amber-600" : "text-slate-400"}`}>{team.rank}</span>
+                  <span className="flex min-w-0 items-center gap-3 text-left">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-[11px] font-black text-slate-700">{team.initials}</span>
+                    <span className="truncate font-extrabold text-slate-900">{team.name}</span>
+                  </span>
+                  <span className="text-slate-500">{team.matches}</span>
+                  <span className="hidden font-semibold text-emerald-600 sm:block">{team.won}</span>
+                  <span className="hidden text-slate-500 sm:block">{team.lost}</span>
+                  <span className="font-black text-slate-950">{team.points}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-7 flex items-end justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Góc người chơi</p>
+                <h2 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-950">Tin mới nhất</h2>
+              </div>
+              <Link to="/blog" className="text-sm font-bold text-slate-600 hover:text-amber-600">Xem tất cả</Link>
+            </div>
+            <div className="space-y-4">
+              {blogs.slice(0, 3).map((post) => (
+                <Link key={post.id} to={`/blog/${post.id}`} className="group grid grid-cols-[112px_1fr] gap-4 rounded-2xl border border-slate-200 p-3 transition hover:border-amber-300 hover:shadow-md">
+                  <img src={post.image} alt="" loading="lazy" className="h-24 w-28 rounded-xl object-cover" />
+                  <span className="min-w-0 py-1">
+                    <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-amber-600"><Newspaper className="h-3.5 w-3.5" /> {post.category}</span>
+                    <span className="mt-2 line-clamp-2 block font-extrabold leading-snug text-slate-900 transition-colors group-hover:text-amber-600">{post.title}</span>
+                    <span className="mt-2 block text-xs text-slate-400">{post.date}</span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
