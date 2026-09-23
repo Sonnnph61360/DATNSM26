@@ -1,9 +1,16 @@
-import "dotenv/config";
+import path from "path";
+import dotenv from "dotenv";
+
+// Cấu hình dotenv trỏ chính xác vào file .env trong thư mục Backend
+dotenv.config({ path: path.resolve(__dirname, ".env") });
+
+// Log kiểm tra biến môi trường email đã nạp thành công chưa
+console.log("--> EMAIL_USER:", process.env.EMAIL_USER ? process.env.EMAIL_USER : "Chưa nhận biến EMAIL_USER");
+
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import { connectDB } from "./config/db";
-import path from "path";
 
 import authRouter from "./routes/auth";
 import fieldRouter from "./routes/field";

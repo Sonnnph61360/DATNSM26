@@ -4,9 +4,9 @@ import Field from "../models/Field";
 import Payment from "../models/Payment";
 import BookingSlot from "../models/BookingSlot";
 import Notification from "../models/Notification";
+import Voucher from "../models/Voucher";
 import { nextId } from "../utils/ids";
 import { serialize, serializeMany } from "../utils/serialize";
-import Voucher from "../models/Voucher";
 import { sendMail } from "../utils/mailer";
 
 function toMin(t) {
@@ -58,7 +58,7 @@ export async function expirePendingPayments() {
   const expired = await Booking.find({
     status: "pending",
     paymentStatus: "unpaid",
-    paymentExpiresAt: { $ne: null, $lte: new Date() },
+    paymentExpiresAt: { $ne: null,$lte: new Date() },
   }).select("id");
   const expiredIds = expired.map((booking) => booking.id);
   if (expiredIds.length) {
@@ -68,7 +68,7 @@ export async function expirePendingPayments() {
     {
       status: "pending",
       paymentStatus: "unpaid",
-      paymentExpiresAt: { $ne: null, $lte: new Date() },
+      paymentExpiresAt: { $ne: null,$lte: new Date() },
     },
     { $set: { status: "cancelled", cancellationReason: "payment_expired" } }
   );
@@ -101,8 +101,6 @@ export async function getBooking(req, res) {
   }
 }
 
-// Chi tiết đơn cho màn khách hàng: bổ sung thông tin cơ sở/sân thực tế,
-// không tin vào fieldName/court do client từng gửi lúc tạo đơn.
 export async function getBookingDetail(req, res) {
   try {
     const id = Number(req.params.id);
@@ -138,7 +136,6 @@ export async function getBookingDetail(req, res) {
   }
 }
 
-// Danh sách nghiệp vụ dành cho admin: các đơn khách đã hủy có/đã có hoàn tiền.
 export async function getRefundRequests(_req, res) {
   try {
     const list = await Booking.find({
@@ -153,7 +150,6 @@ export async function getRefundRequests(_req, res) {
 
 export async function createBooking(req, res) {
   try {
-    // Release timed-out payment holds before checking availability.
     await expirePendingPayments();
     const {
       fieldId,
@@ -245,26 +241,26 @@ export async function createBooking(req, res) {
     try {
       for (const [index, d] of targetDates.entries()) {
         const booking = await Booking.create({
-        id: bookingIds[index],
-        fieldId: numericFieldId,
-        courtId: numericCourtId,
-        fieldName: selectedField.name,
-        court: selectedCourt.name,
-        date: d,
-        time,
-        duration: dur,
-        total: singleTotal,
-        customer: customer || {},
-        services: services || [],
-        paymentMethod: paymentMethod || "cash",
-        paymentStatus: "unpaid",
-        paidAmount: 0,
-        paymentExpiresAt: paymentMethod === "cash" ? null : new Date(Date.now() + 15 * 60 * 1000),
-        status: "pending",
-        voucherCode: voucherCode || "",
-        discount: discount || 0,
-        createdAt: new Date().toISOString(),
-      });
+          id: bookingIds[index],
+          fieldId: numericFieldId,
+          courtId: numericCourtId,
+          fieldName: selectedField.name,
+          court: selectedCourt.name,
+          date: d,
+          time,
+          duration: dur,
+          total: singleTotal,
+          customer: customer || {},
+          services: services || [],
+          paymentMethod: paymentMethod || "cash",
+          paymentStatus: "unpaid",
+          paidAmount: 0,
+          paymentExpiresAt: paymentMethod === "cash" ? null : new Date(Date.now() + 15 * 60 * 1000),
+          status: "pending",
+          voucherCode: voucherCode || "",
+          discount: discount || 0,
+          createdAt: new Date().toISOString(),
+        });
         if (!firstBooking) firstBooking = booking;
       }
     } catch (error) {
@@ -272,12 +268,60 @@ export async function createBooking(req, res) {
       throw error;
     }
 
-    // Cập nhật lượt dùng của voucher
     if (voucherCode) {
       await Voucher.findOneAndUpdate(
         { code: voucherCode },
         { $inc: { used: 1 } }
       );
+    }
+
+    // =======================================================
+    // GỬI EMAIL XÁC NHẬN KÈM MÃ QR CHECK-IN CHUẨN ĐỊNH DẠNG BK
+    // =======================================================
+    if (firstBooking?.customer?.email) {
+      const emailTo = firstBooking.customer.email;
+      const customerName = firstBooking.customer.fullName || "Khách hàng";
+    
+      // 1. Tạo chuỗi mã đơn (Ví dụ: BK000107)
+      const bookingCode = `BK${String(firstBooking.id).padStart(6, "0")}`;
+    
+      // 2. Chuỗi dữ liệu QR giống hệt BookingPass.tsx
+      const qrContent = `CHECKIN-${bookingCode}|${selectedField.name}|${selectedCourt.name}|${targetDates[0]}|${time}`;
+    
+      // 3. Sử dụng QuickChart API tạo QR đúng định dạng
+      const qrCodeUrl = `https://quickchart.io/qr?text=${encodeURIComponent(qrContent)}&size=280`;
+    
+      const htmlMail = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 12px; padding: 24px; background-color: #ffffff;">
+          <h2 style="color: #16a34a; text-align: center; margin-top: 0;">Xác Nhận Đặt Sân Thành Công!</h2>
+          <p>Xin chào <b>${customerName}</b>,</p>
+          <p>Cảm ơn bạn đã đặt sân. Dưới đây là mã QR Check-in chính thức của bạn:</p>
+    
+          <div style="text-align: center; margin: 24px 0; background-color: #18181b; padding: 20px; border-radius: 16px; border: 1px solid #eab308;">
+            <p style="margin: 0 0 12px 0; font-weight: bold; color: #eab308; font-size: 13px; letter-spacing: 1px;">MÃ QR CHECK-IN SÂN CỦA BẠN</p>
+            
+            <!-- Ảnh QR đồng bộ 100% -->
+            <img src="${qrCodeUrl}" alt="QR Check-in" style="width: 200px; height: 200px; border-radius: 8px; padding: 8px; background: #ffffff;" />
+            
+            <p style="font-size: 16px; font-weight: bold; color: #ffffff; margin: 12px 0 4px 0;">Mã đơn: ${bookingCode}</p>
+            <p style="font-size: 12px; color: #a1a1aa; margin: 0;">Vui lòng đưa mã QR này cho nhân viên tại sân khi đến check-in.</p>
+          </div>
+    
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <tr><td style="padding: 8px 0; color: #64748b; width: 40%;">Mã đơn đặt:</td><td style="padding: 8px 0; font-weight: bold;">${bookingCode}</td></tr>
+            <tr><td style="padding: 8px 0; color: #64748b;">Cơ sở:</td><td style="padding: 8px 0; font-weight: bold;">${selectedField.name}</td></tr>
+            <tr><td style="padding: 8px 0; color: #64748b;">Sân:</td><td style="padding: 8px 0; font-weight: bold;">${selectedCourt.name}</td></tr>
+            <tr><td style="padding: 8px 0; color: #64748b;">Ngày đặt:</td><td style="padding: 8px 0; font-weight: bold;">${targetDates.join(", ")}</td></tr>
+            <tr><td style="padding: 8px 0; color: #64748b;">Khung giờ:</td><td style="padding: 8px 0; font-weight: bold;">${time} (${dur} giờ)</td></tr>
+            <tr><td style="padding: 8px 0; color: #64748b;">Tổng tiền:</td><td style="padding: 8px 0; font-weight: bold; color: #d97706;">${Number(total).toLocaleString("vi-VN")} VNĐ</td></tr>
+          </table>
+    
+          <p style="text-align: center; color: #64748b; font-size: 14px; margin-bottom: 0;">Chúc bạn có trải nghiệm chơi thể thao vui vẻ!</p>
+        </div>
+      `;
+    
+      sendMail(emailTo, `[Xác Nhận Đặt Sân] Mã đơn ${bookingCode}`, htmlMail)
+        .catch((err) => console.error("Lỗi gửi mail đặt sân:", err));
     }
 
     return res.status(201).json(serialize(firstBooking));
@@ -406,17 +450,34 @@ export async function completeRefund(req, res) {
   }
 }
 
+// =======================================================
+// CHECK-IN BẰNG MÃ QR (HỖ TRỢ CẢ CHUỖI BK000108 LẪN SỐ ID 108)
+// =======================================================
 export async function checkInBooking(req, res) {
   try {
-    const id = Number(req.params.id);
+    let rawParam = String(req.params.id || "").trim().toUpperCase();
+
+    // Loại bỏ tiền tố BK nếu client gửi lên chuỗi BK000108
+    if (rawParam.startsWith("BK")) {
+      rawParam = rawParam.replace("BK", "");
+    }
+
+    const id = Number(rawParam);
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ message: "Mã đơn không hợp lệ" });
+    }
+
     const booking = await Booking.findOne({ id });
-    if (!booking) return res.status(404).json({ message: "Không tìm thấy mã đơn" });
+    if (!booking) return res.status(404).json({ message: "Không tìm thấy đơn đặt sân" });
     if (booking.status === "cancelled") return res.status(400).json({ message: "Đơn đã hủy, không thể check-in" });
-    if (booking.status === "completed") return res.status(400).json({ message: "Đơn này đã check-in" });
-    if (booking.status !== "confirmed") return res.status(400).json({ message: "Đơn chưa được thanh toán/xác nhận" });
+    if (booking.status === "completed") return res.status(400).json({ message: "Đơn này đã được check-in trước đó" });
+
     const updated = await Booking.findOneAndUpdate(
-      { id }, { $set: { status: "completed", checkedInAt: new Date() } }, { new: true }
+      { id },
+      { $set: { status: "completed", paymentStatus: "paid", checkedInAt: new Date() } },
+      { new: true }
     );
+
     return res.json(serialize(updated));
   } catch (e) {
     return res.status(400).json({ message: e.message });
