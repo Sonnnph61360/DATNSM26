@@ -4,7 +4,7 @@
   "main": "src/app.js",
   "scripts": {
     "dev": "nodemon --exec babel-node src/bootstrap.js",
-    "start": "node src/app.js",
+    "start": "babel-node src/bootstrap.js",
     "seed": "babel-node src/seed.js"
   },
   "keywords": [],
@@ -22,8 +22,7 @@
     "mongodb-memory-server": "^11.2.0",
     "mongoose": "^8.24.2",
     "morgan": "^1.10.1",
-    "nodemailer": "^10.0.8",
-    "recharts": "^3.10.1"
+    "nodemailer": "^10.0.8"
   },
   "devDependencies": {
     "@babel/core": "^7.28.4",

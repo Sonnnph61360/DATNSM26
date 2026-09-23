@@ -263,67 +263,31 @@ export default function Booking() {
   };
 
   const advanceStep = () => {
-    // BƯỚC 1 -> BƯỚC 2
-    // Tuyệt đối không submit form ở đây và không được chuyển sang Paygate.
     if (currentStep === 1) {
-      if (!selectedCourt) {
-        toast.error("Vui lòng chọn sân");
+      if (!selectedCourt || !date || !time) {
+        toast.error("Vui lòng chọn sân, ngày và khung giờ trước khi tiếp tục");
         return;
       }
-
-      if (!date) {
-        toast.error("Vui lòng chọn ngày đặt sân");
-        return;
-      }
-
-      if (!time) {
-        toast.error("Vui lòng chọn khung giờ");
-        return;
-      }
-
-      if (!isDurationValid(duration)) {
-        toast.error(`Thời lượng đặt sân vượt quá giờ đóng cửa (${field?.closeTime || "22:00"})`);
-        return;
-      }
-
-      if (overlappingBooking(time)) {
+      if (!isDurationValid(duration) || overlappingBooking(time)) {
         toast.error("Khung giờ hoặc thời lượng đã chọn không còn phù hợp");
         return;
       }
-
-      goToStep(2);
-      return;
     }
-
-    // BƯỚC 2 -> BƯỚC 3
     if (currentStep === 2) {
       if (!customer.fullName.trim()) {
         toast.error("Vui lòng nhập họ và tên");
         return;
       }
-
       if (!customer.phone.trim() || customer.phone.trim().length < 9) {
         toast.error("Số điện thoại chưa hợp lệ");
         return;
       }
-
-      // Chỉ cập nhật state sang bước 3.
-      // Chưa tạo booking và CHƯA được navigate sang /paygate.
-      goToStep(3);
-      return;
     }
+    goToStep(Math.min(3, currentStep + 1));
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-
-    // RẤT QUAN TRỌNG:
-    // Form chỉ được submit ở BƯỚC 3.
-    // Nếu người dùng nhấn Enter ở bước 1/2 hoặc có browser tự submit form,
-    // tuyệt đối không tạo booking và không được nhảy thẳng sang /paygate.
-    if (currentStep !== 3) {
-      return;
-    }
 
     if (!selectedCourt || !field) {
       toast.error("Vui lòng chọn sân trước khi tiếp tục");
@@ -434,45 +398,8 @@ export default function Booking() {
         return;
       }
 
-      // Chỉ bước 3 mới được đi tới Paygate.
-      // Giữ đúng lựa chọn thanh toán mà người dùng vừa chọn:
-      // - deposit: 30%
-      // - full: 100%
-      // - cash: đã return ở phía trên
-      const amountToPay =
-        paymentMethod === "deposit"
-          ? deposit
-          : paymentMethod === "full"
-            ? total
-            : 0;
-
-      const remainingAmount = Math.max(0, total - amountToPay);
-
-      const paygateBooking = {
-        ...res.data,
-        total,
-        paymentMethod,
-        amountToPay,
-        remainingAmount,
-      };
-
       setLoading(false);
-
-      navigate("/paygate", {
-        state: {
-          payload: {
-            ...payload,
-            amountToPay,
-            remainingAmount,
-          },
-          booking: paygateBooking,
-          paymentMethod,
-          amountToPay,
-          remainingAmount,
-          deposit,
-          total,
-        },
-      });
+      navigate("/paygate", { state: { payload, booking: res.data, deposit, total } });
     } catch (error: unknown) {
       const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast.error(errorMessage || "Tạo đơn đặt sân thất bại. Vui lòng thử lại!");
