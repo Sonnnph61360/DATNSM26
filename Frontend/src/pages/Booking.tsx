@@ -2,7 +2,7 @@ import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } fro
 import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
-  CalendarDays, Clock, MapPin, CheckCircle2, Loader2, Wallet, QrCode, Tag, ChevronRight, ShieldCheck, Sparkles, ArrowLeft, CreditCard
+
 } from "lucide-react";
 import {
   api, Court, Field, formatCurrency, getBookedSlots, invalidateApiCache, isSlotConflict,
@@ -74,10 +74,12 @@ export default function Booking() {
     return slots;
   }, [field?.openTime, field?.closeTime]);
 
+
   const isDurationValid = useCallback((dur: number): boolean => {
     if (!time) return true;
     return getEndTime(time, dur) <= closingTime;
   }, [time, closingTime]);
+
 
   useEffect(() => {
     if (time && !isDurationValid(duration)) {
@@ -147,13 +149,14 @@ export default function Booking() {
       const slots = await getBookedSlots(courtId, date, force);
       setBookedSlots(slots);
     } catch {
-      // Giữ nguyên dữ liệu hiện có khi mạng lỗi
+
     }
   }, [courtId, date]);
 
   useEffect(() => {
     refreshBookedSlots();
   }, [refreshBookedSlots]);
+
 
   useEffect(() => {
     if (!courtId || !date) return;
@@ -168,6 +171,7 @@ export default function Booking() {
     };
   }, [courtId, date, refreshBookedSlots]);
 
+
   const slotDisabled = (slot: string) => {
     const [hour, minute] = slot.split(":").map(Number);
     const slotMinute = hour * 60 + minute;
@@ -178,9 +182,9 @@ export default function Booking() {
       return slotMinute >= start && slotMinute < end;
     });
   };
-
   const overlappingBooking = (slot: string, selectedDuration = duration) =>
     bookedSlots.find((b) => isSlotConflict(b.time, b.duration, slot, selectedDuration));
+
 
   const selectTime = (slot: string) => {
     const conflict = overlappingBooking(slot);
@@ -218,11 +222,6 @@ export default function Booking() {
       const voucher = res.data[0];
       const now = new Date().toISOString().slice(0, 10);
 
-      if (voucher.status && voucher.status !== "active") {
-        toast.error("Mã khuyến mãi hiện không khả dụng!");
-        setVoucherLoading(false);
-        return;
-      }
 
       if (voucher.validUntil && voucher.validUntil < now) {
         toast.error("Mã khuyến mãi đã hết hạn sử dụng!");
@@ -230,34 +229,18 @@ export default function Booking() {
         return;
       }
 
-      const limit = voucher.limit ?? voucher.usageLimit;
-      const used = voucher.used ?? voucher.usedCount ?? 0;
-      if (limit !== undefined && used >= limit) {
+
         toast.error("Mã khuyến mãi đã hết lượt sử dụng!");
         setVoucherLoading(false);
         return;
       }
 
       let discountAmount = 0;
-      const discountVal = Number(voucher.discount ?? voucher.discountPercent ?? voucher.discountAmount ?? 0);
-      const voucherType = voucher.type || (voucher.discountPercent ? "percent" : "fixed");
 
-      if (voucherType === "percent" || voucherType === "percentage") {
-        discountAmount = Math.round((subTotal * discountVal) / 100);
-        if (voucher.maxDiscount && discountAmount > voucher.maxDiscount) {
-          discountAmount = voucher.maxDiscount;
-        }
-      } else {
-        discountAmount = discountVal;
       }
 
       discountAmount = Math.min(discountAmount, subTotal);
 
-      if (discountAmount <= 0) {
-        toast.error("Voucher không thể áp dụng cho đơn này!");
-        setVoucherLoading(false);
-        return;
-      }
 
       setAppliedVoucher({
         code: voucher.code,
@@ -335,6 +318,7 @@ export default function Booking() {
       return;
     }
 
+
     const user = getUser();
     setLoading(true);
 
@@ -344,17 +328,7 @@ export default function Booking() {
     try {
       for (const d of recurringDates) {
         const slots = await getBookedSlots(selectedCourt.id, d, true);
-        const conflictSlots = slots.filter((b) => {
-          const isMyBooking = user && (
-            String(b.customer?.userId) === String(user.id) ||
-            b.customer?.phone === customer.phone.trim() ||
-            b.customer?.email === user.email
-          );
-          return !isMyBooking && isSlotConflict(b.time, b.duration, time, duration);
-        });
 
-        if (conflictSlots.length > 0) {
-          toast.error(`Khung giờ ngày ${d} vừa được người khác đặt. Vui lòng chọn giờ khác.`);
           if (d === date) setBookedSlots(slots);
           setLoading(false);
           return;
@@ -397,7 +371,7 @@ export default function Booking() {
     };
 
     try {
-      const res = await api.post("/bookings", payload);
+
       for (const bookedDate of recurringDates) {
         invalidateApiCache(`bookings:date:${bookedDate}`);
       }
@@ -408,7 +382,7 @@ export default function Booking() {
       }
       window.dispatchEvent(new CustomEvent("booking:created", { detail: res.data }));
 
-      // Nếu chọn Tiền mặt tại sân -> Trực tiếp hoàn tất không qua cổng
+
       if (paymentMethod === "cash") {
         const code = `BK${String(res.data.id).padStart(6, "0")}`;
         const qrData = `CHECKIN-${code} | Sân: ${payload.fieldName} - ${payload.court} | Tên: ${payload.customer.fullName} | ĐT: ${payload.customer.phone}`;
@@ -419,22 +393,12 @@ export default function Booking() {
           paymentMethod: "cash",
           checkinQrUrl,
         });
-        toast.success("Đặt sân thành công! Vui lòng thanh toán trực tiếp tại sân.");
+
         setLoading(false);
         return;
       }
 
-      // Ngược lại nếu chọn Đặt cọc hoặc Thanh toán 100% -> Chuyển sang Paygate kèm Gateway đã chọn
-      setLoading(false);
-      navigate("/paygate", { 
-        state: { 
-          payload, 
-          booking: res.data, 
-          deposit, 
-          total,
-          gateway: paymentGateway // Truyền gateway 'vnpay' hoặc 'vietqr'
-        } 
-      });
+
     } catch (error: unknown) {
       const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast.error(errorMessage || "Tạo đơn đặt sân thất bại. Vui lòng thử lại!");
@@ -765,7 +729,7 @@ export default function Booking() {
                     name="fullName"
                     value={customer.fullName}
                     onChange={handleCustomerChange}
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-amber-400 text-slate-900 rounded-xl px-4 py-3 text-sm outline-none transition-all placeholder:text-slate-400"
+
                     placeholder="Nguyễn Văn A"
                   />
                 </div>
@@ -775,7 +739,7 @@ export default function Booking() {
                     name="phone"
                     value={customer.phone}
                     onChange={handleCustomerChange}
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-amber-400 text-slate-900 rounded-xl px-4 py-3 text-sm outline-none transition-all placeholder:text-slate-400"
+
                     placeholder="0987xxxxxx"
                   />
                 </div>
@@ -798,64 +762,7 @@ export default function Booking() {
 
             {currentStep === 3 && <>
             {/* 5. Phương thức thanh toán */}
-            <div className="bg-white rounded-3xl border border-slate-200 p-6 md:p-8 shadow-sm space-y-6">
-              <div>
-                <h3 className="text-lg font-extrabold text-slate-950 mb-2 flex items-center gap-2.5">
-                  <span className="w-7 h-7 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 flex items-center justify-center text-xs font-black">5</span>
-                  Chọn mức thanh toán
-                </h3>
-                <p className="text-xs text-slate-500 mb-4">Lựa chọn số tiền bạn muốn trả trước cho đơn hàng này.</p>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {[
-                    {
-                      id: "deposit",
-                      title: "Đặt cọc (30%)",
-                      desc: "Chuyển khoản cọc giữ sân",
-                      badge: "Phổ biến",
-                    },
-                    {
-                      id: "full",
-                      title: "Thanh toán 100%",
-                      desc: "Thẻ ATM, Visa, Chuyển khoản",
-                      badge: "Nhanh nhất",
-                    },
-                    {
-                      id: "cash",
-                      title: "Tiền mặt tại sân",
-                      desc: "Thanh toán trực tiếp khi đến",
-                      badge: "Linh hoạt",
-                    },
-                  ].map((item) => {
-                    const active = paymentMethod === item.id;
-                    return (
-                      <label
-                        key={item.id}
-                        className={`block rounded-2xl p-5 cursor-pointer border transition-all relative overflow-hidden ${
-                          active
-                            ? "bg-yellow-500/10 border-yellow-500 ring-1 ring-yellow-500/40"
-                            : "bg-slate-50 border-slate-200 hover:border-amber-300"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <input
-                            type="radio"
-                            name="paymentMethod"
-                            checked={active}
-                            onChange={() => setPaymentMethod(item.id as "deposit" | "full" | "cash")}
-                            className="accent-yellow-500 w-4 h-4 mt-1"
-                          />
-                          <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-500">
-                            {item.badge}
-                          </span>
-                        </div>
-                        <div className="font-bold text-slate-900 text-base mt-2">{item.title}</div>
-                        <div className="text-xs text-slate-500 mt-1">{item.desc}</div>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
 
               {/* Chọn kênh thanh toán (Chỉ hiển thị khi KHÔNG chọn Tiền mặt) */}
               {paymentMethod !== "cash" && (
@@ -866,25 +773,14 @@ export default function Booking() {
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <label
-                      className={`block rounded-2xl p-4 cursor-pointer border transition-all ${
-                        paymentGateway === "vnpay"
-                          ? "bg-amber-50 border-amber-400 ring-1 ring-amber-400"
+
                           : "bg-slate-50 border-slate-200 hover:border-amber-300"
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <input
                           type="radio"
-                          name="paymentGateway"
-                          checked={paymentGateway === "vnpay"}
-                          onChange={() => setPaymentGateway("vnpay")}
-                          className="accent-amber-500"
-                        />
-                        <div>
-                          <div className="font-bold text-slate-900 text-sm">Cổng VNPay</div>
-                          <div className="text-xs text-slate-500">Thẻ ATM, Visa, Ví VNPay</div>
-                        </div>
-                      </div>
+
                     </label>
 
                     <label
@@ -910,6 +806,20 @@ export default function Booking() {
                     </label>
                   </div>
                 </div>
+              )}
+            </div>
+            </>}
+
+            <div className="flex items-center justify-between gap-3 pt-1 lg:hidden">
+              {currentStep > 1 ? (
+                <button type="button" onClick={() => goToStep(currentStep - 1)} className="btn-outline min-h-12 flex-1 rounded-xl px-5 py-3 text-sm font-bold">
+                  <ArrowLeft className="mr-2 inline h-4 w-4" /> Quay lại
+                </button>
+              ) : <span />}
+              {currentStep < 3 && (
+                <button type="button" onClick={advanceStep} className="btn-primary min-h-12 flex-1 rounded-xl px-5 py-3 text-sm font-extrabold">
+                  Tiếp tục <ChevronRight className="ml-1 inline h-4 w-4" />
+                </button>
               )}
             </div>
             </>}

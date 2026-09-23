@@ -340,14 +340,31 @@ export async function updateBooking(req, res) {
       return res.status(400).json({ message: "Đơn đã hủy không thể thay đổi trạng thái" });
     }
 
-    const forbidden = ["status", "paymentStatus", "paidAmount", "refundAmount", "refundStatus", "checkedInAt"];
+    if (Object.prototype.hasOwnProperty.call(req.body, "paymentMethod")) {
+      const allowedMethods = ["deposit", "full", "cash"];
+      if (!allowedMethods.includes(req.body.paymentMethod)) {
+        return res.status(400).json({ message: "Phương thức thanh toán không hợp lệ" });
+      }
+      if (current.status !== "pending" || current.paymentStatus !== "unpaid") {
+        return res.status(400).json({ message: "Đơn không còn được đổi phương thức thanh toán" });
+      }
+    }
+
+    const forbidden = ["status", "paymentStatus", "paidAmount", "refundAmount", "refundStatus", "checkedInAt", "paymentExpiresAt"];
     if (forbidden.some((key) => Object.prototype.hasOwnProperty.call(req.body, key))) {
       return res.status(400).json({ message: "Trạng thái đơn và thanh toán được cập nhật tự động qua luồng nghiệp vụ" });
     }
 
+    const updates = { ...req.body };
+    if (updates.paymentMethod) {
+      updates.paymentExpiresAt = updates.paymentMethod === "cash"
+        ? null
+        : current.paymentExpiresAt || new Date(Date.now() + 15 * 60 * 1000);
+    }
+
     const b = await Booking.findOneAndUpdate(
       { id },
-      { $set: req.body },
+      { $set: updates },
       { new: true }
     );
 

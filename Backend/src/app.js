@@ -47,6 +47,7 @@ app.use("/vnpay", vnpayRouter);
 app.use("/news", newsRouter);
 app.use("/notifications", notificationRouter);
 
+
 // alias /api/*
 app.use("/api", authRouter);
 app.use("/api/fields", fieldRouter);

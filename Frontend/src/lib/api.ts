@@ -84,6 +84,12 @@ export type Booking = {
   };
   paymentMethod: string;
   paymentStatus: string;
+  paymentExpiresAt?: string;
+  paidAmount?: number;
+  refundStatus?: "none" | "pending" | "completed";
+  refundAmount?: number;
+  refundBank?: string;
+  refundStk?: string;
   status: string;
   createdAt: string;
 };
@@ -106,14 +112,15 @@ export function isSlotConflict(
   return a0 < b1 && b0 < a1;
 }
 
-export async function getBookedSlots(courtId: number, date: string) {
+export async function getBookedSlots(courtId: number, date: string, force = false) {
   // Dùng 1 request theo ngày (cache) rồi lọc court — tránh N request cho N sân
-  const list = await getBookingsByDate(date);
+  const list = await getBookingsByDate(date, force);
   return list.filter((b) => b.courtId === courtId && b.status !== "cancelled");
 }
 
 /** Lấy bookings theo ngày — cache 15s, gộp request trùng */
-export async function getBookingsByDate(date: string) {
+export async function getBookingsByDate(date: string, force = false) {
+  if (force) invalidateApiCache(`bookings:date:${date}`);
   return cachedGet(
     `bookings:date:${date}`,
     async () => {

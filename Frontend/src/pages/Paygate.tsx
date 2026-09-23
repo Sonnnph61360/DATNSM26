@@ -77,13 +77,12 @@ export default function Paygate() {
     }
     setLoading(true);
     try {
-      // Dùng trực tiếp đơn đã được khởi tạo từ trang Booking
-      const currentBooking = existingBooking || balanceBooking || booking;
+
 
       if (tab === "card") {
         const vnpayRes = await api.post("/vnpay/create-url", {
           amount: Number(amountToPay),
-          orderId: String(currentBooking.id),
+
           paymentKind,
           language: "vn",
         });
@@ -94,12 +93,7 @@ export default function Paygate() {
         return;
       }
 
-      toast("Đơn đang chờ xác thực chuyển khoản.", { icon: "⏳" });
-      navigate("/my-bookings", {
-        state: {
-          successId: currentBooking.id,
-          paymentMethod: isBalancePayment ? "balance" : booking.paymentMethod,
-          payload: currentBooking,
+
           isAutoTransfer: false,
         },
       });

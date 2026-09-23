@@ -1,7 +1,5 @@
 import { Layout, Menu, Avatar, Dropdown } from 'antd';
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CalendarDays, ClipboardList, MapPin, LogOut, Bell, Settings, User, Ticket, Shield, Trophy } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+
 
 const { Header, Sider, Content } = Layout;
 
