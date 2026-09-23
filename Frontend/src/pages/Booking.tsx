@@ -16,7 +16,8 @@ const DURATIONS = [
   { label: "2 giờ", value: 2 },
 ];
 
-const CLOSING_TIME = 22; // Sân đóng cửa lúc 22:00
+const CLOSING_TIME = 21; // Sân đóng cửa lúc 21:00
+//
 
 export default function Booking() {
   const navigate = useNavigate();
@@ -36,7 +37,11 @@ export default function Booking() {
   const [courtId, setCourtId] = useState<number | null>(
     courtIdParam ? Number(courtIdParam) : null
   );
-  const [date, setDate] = useState(dateParam || "");
+  const [date, setDate] = useState(
+    dateParam && dateParam >= new Date().toISOString().slice(0, 10)
+      ? dateParam
+      : ""
+  );
   const [time, setTime] = useState(timeParam || "");
   const [duration, setDuration] = useState(1);
   const [customer, setCustomer] = useState({
@@ -66,6 +71,8 @@ export default function Booking() {
     if (!time) return true;
     return getEndTime(time, dur) <= CLOSING_TIME;
   };
+
+  const todayString = new Date().toISOString().slice(0, 10);
 
   // Tự động điều chỉnh thời lượng về 1 giờ nếu chuyển sang giờ muộn
   useEffect(() => {
@@ -134,8 +141,24 @@ export default function Booking() {
     })();
   }, [selectedCourt?.id, date]);
 
+  // Khóa các khung giờ đã qua trong ngày hôm nay.
+  const isPastSlot = (slot: string): boolean => {
+    if (!date) return false;
+
+    const today = new Date().toISOString().slice(0, 10);
+    if (date !== today) return false;
+
+    const now = new Date();
+    const [hours, minutes] = slot.split(":").map(Number);
+    const slotTime = new Date(now);
+    slotTime.setHours(hours, minutes, 0, 0);
+
+    // Khóa cả giờ bắt đầu đã qua và giờ đang diễn ra.
+    return slotTime <= now;
+  };
+
   const slotDisabled = (slot: string) => {
-    return bookedSlots.some((b) =>
+    return isPastSlot(slot) || bookedSlots.some((b) =>
       isSlotConflict(b.time, b.duration, slot, duration)
     );
   };
@@ -159,39 +182,59 @@ export default function Booking() {
         setVoucherLoading(false);
         return;
       }
-
+  
       const voucher = res.data[0];
       const now = new Date().toISOString().slice(0, 10);
-
-      if (voucher.validUntil && voucher.validUntil < now) {
+  
+      // Kiểm tra hạn sử dụng
+      const validUntil = voucher.validUntil || voucher.expiry_date;
+      if (validUntil && validUntil < now) {
         toast.error("Mã khuyến mãi đã hết hạn sử dụng!");
         setVoucherLoading(false);
         return;
       }
-
-      if (voucher.usageLimit !== undefined && voucher.usedCount >= voucher.usageLimit) {
+  
+      // Kiểm tra giới hạn lượt dùng
+      const limit = voucher.usageLimit ?? voucher.limit ?? voucher.quantity;
+      const used = voucher.usedCount ?? voucher.used ?? 0;
+      if (limit !== undefined && used >= limit) {
         toast.error("Mã khuyến mãi đã hết lượt sử dụng!");
         setVoucherLoading(false);
         return;
       }
-
+  
+      // Lấy giá trị giảm giá (Hỗ trợ tất cả các tên trường: discountAmount, discount, discount_value)
+      const val = Number(
+        voucher.discountAmount ?? voucher.discount ?? voucher.discount_value ?? 0
+      );
+      const percent = Number(voucher.discountPercent ?? 0);
+      const type = voucher.type || voucher.discount_type;
+  
       let discountAmount = 0;
-      if (voucher.discountPercent) {
-        discountAmount = Math.round((subTotal * voucher.discountPercent) / 100);
-      } else if (voucher.discountAmount) {
-        discountAmount = voucher.discountAmount;
+  
+      if (type === "percentage" || type === "percent" || percent > 0) {
+        const p = percent > 0 ? percent : val;
+        discountAmount = Math.round((subTotal * p) / 100);
+      } else {
+        discountAmount = val;
       }
-
+  
       discountAmount = Math.min(discountAmount, subTotal);
-
+  
+      if (discountAmount <= 0) {
+        toast.error("Mã không hợp lệ hoặc không đủ điều kiện giảm giá!");
+        setVoucherLoading(false);
+        return;
+      }
+  
       setAppliedVoucher({
         code: voucher.code,
         discountAmount,
-        voucherId: voucher.id,
+        voucherId: voucher.id || voucher._id,
       });
-
+  
       toast.success(`Đã áp dụng mã ${voucher.code}: Giảm ${formatCurrency(discountAmount)}`);
-    } catch {
+    } catch (error) {
       toast.error("Lỗi khi kiểm tra mã khuyến mãi");
     } finally {
       setVoucherLoading(false);
@@ -214,12 +257,20 @@ export default function Booking() {
       toast.error("Vui lòng chọn ngày đặt sân");
       return;
     }
+    if (date < todayString) {
+      toast.error("Không thể đặt sân cho ngày đã qua.");
+      return;
+    }
     if (!time) {
       toast.error("Vui lòng chọn giờ đặt sân");
       return;
     }
+    if (isPastSlot(time)) {
+      toast.error("Khung giờ này đã qua. Vui lòng chọn giờ khác.");
+      return;
+    }
     if (!isDurationValid(duration)) {
-      toast.error("Thời lượng đặt sân vượt quá giờ đóng cửa (22:00)");
+      toast.error("Thời lượng đặt sân vượt quá giờ đóng cửa (21:00)");
       return;
     }
     if (!customer.fullName.trim()) {
@@ -455,7 +506,7 @@ export default function Booking() {
                   <input
                     type="date"
                     value={date}
-                    min={new Date().toISOString().slice(0, 10)}
+                    min={todayString}
                     onChange={(e) => {
                       setDate(e.target.value);
                       if (endDate && e.target.value > endDate) setEndDate("");
@@ -473,7 +524,7 @@ export default function Booking() {
                   <input
                     type="date"
                     value={endDate}
-                    min={date || new Date().toISOString().slice(0, 10)}
+                    min={date || todayString}
                     max={new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString().slice(0, 10)}
                     onChange={(e) => setEndDate(e.target.value)}
                     className="w-full bg-black border border-white/10 focus:border-yellow-500 text-white rounded-xl px-4 py-3 text-sm outline-none transition-all"
@@ -489,7 +540,8 @@ export default function Booking() {
                 </label>
                 <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
                   {TIME_SLOTS.map((t) => {
-                    const disabled = !date || slotDisabled(t);
+                    const past = isPastSlot(t);
+                    const disabled = !date || past || slotDisabled(t);
                     const selected = time === t;
                     return (
                       <button
@@ -510,6 +562,11 @@ export default function Booking() {
                     );
                   })}
                 </div>
+                {date === todayString && (
+                  <p className="text-xs text-red-400/90 mt-3 font-medium">
+                    * Các khung giờ đã qua trong hôm nay sẽ tự động bị khóa.
+                  </p>
+                )}
               </div>
 
               {/* Thời lượng */}
@@ -543,6 +600,11 @@ export default function Booking() {
                 {time && getEndTime(time, 1) >= CLOSING_TIME && (
                   <p className="text-xs text-yellow-500/80 mt-2 font-medium">
                     * Sân đóng cửa lúc {CLOSING_TIME}:00 nên chỉ áp dụng thời lượng phù hợp.
+                  </p>
+                )}
+                {time === "20:00" && (
+                  <p className="text-xs text-red-400/90 mt-2 font-medium">
+                    * Đặt sân lúc 20:00 chỉ được thuê 1 giờ. Thời lượng 1.5 giờ và 2 giờ không khả dụng vì sân đóng cửa lúc 21:00.
                   </p>
                 )}
               </div>
