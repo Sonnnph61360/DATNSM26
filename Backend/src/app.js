@@ -30,8 +30,7 @@ app.use(
   })
 );
 
-// API giống json-server (root) để Frontend ít phải đổi
-app.use(authRouter); // /login /register /users
+app.use(authRouter); 
 app.use("/fields", fieldRouter);
 app.use("/courts", courtRouter);
 app.use("/bookings", bookingRouter);
