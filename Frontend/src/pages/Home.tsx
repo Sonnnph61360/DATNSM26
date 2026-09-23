@@ -46,13 +46,6 @@ export default function Home() {
                 {fields.length || "..."} cơ sở đang hoạt động
               </span>
             </div>
-
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-white leading-tight mb-6 animate-fade-in-up tracking-tight">
-              Đẳng Cấp Thể Thao<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600">
-                Trong Tầm Tay Bạn
-              </span>
-            </h1>
             <p className="text-gray-400 text-lg md:text-xl leading-relaxed mb-10 animate-fade-in-up delay-100 max-w-2xl">
               Nền tảng đặt sân bóng rổ và thể thao cao cấp. Trải nghiệm dịch vụ 
               hàng đầu với mạng lưới hơn <strong className="text-yellow-500">2,400 cơ sở</strong> trên toàn quốc.
