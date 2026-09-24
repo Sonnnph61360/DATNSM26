@@ -2,6 +2,8 @@ import { Routes, Route } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { useLocation } from "react-router-dom";
 import ClientLayout from "./layouts/ClientLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -23,6 +25,7 @@ const Contact = lazy(() => import("./pages/Contact"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const MyBookings = lazy(() => import("./pages/MyBookings"));
+const Favorites = lazy(() => import("./pages/Favorites"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Paygate = lazy(() => import("./pages/Paygate"));
 const VnPaySandbox = lazy(() => import("./pages/VnPaySandbox"));
@@ -35,6 +38,7 @@ const CalendarPage = lazy(() => import("./pages/Admin/CalendarPage"));
 const AdminCustomers = lazy(() => import("./pages/Admin/AdminCustomers"));
 const AdminVouchers = lazy(() => import("./pages/Admin/AdminVouchers"));
 const AdminEmployees = lazy(() => import("./pages/Admin/AdminEmployees"));
+const AdminReviews = lazy(() => import("./pages/Admin/AdminReviews"));
 
 function RouteFallback() {
   return (
@@ -46,10 +50,20 @@ function RouteFallback() {
 }
 
 function App() {
+  const location = useLocation();
+
   return (
     <>
-      <Suspense fallback={<RouteFallback />}>
-      <Routes>
+      <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -6 }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+      >
+        <Suspense fallback={<RouteFallback />}>
+        <Routes location={location}>
         <Route path="/*" element={<ClientLayout />}>
           <Route index element={<Home />} />
           <Route path="field/:id" element={<Detail />} />
@@ -86,6 +100,14 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="favorites"
+            element={
+              <ProtectedRoute>
+                <Favorites />
+              </ProtectedRoute>
+            }
+          />
         </Route>
 
         {/* 2. Đã thêm Route VnPaySandbox độc lập ở đây */}
@@ -113,10 +135,19 @@ function App() {
           <Route path="customers" element={<AdminCustomers />} />
           <Route path="vouchers" element={<AdminVouchers />} />
           <Route path="employees" element={<AdminEmployees />} />
+          <Route path="reviews" element={<AdminReviews />} />
         </Route>
-      </Routes>
-      </Suspense>
-      <Toaster position="top-right" />
+        </Routes>
+        </Suspense>
+      </motion.div>
+      </AnimatePresence>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          className: "app-toast",
+        }}
+      />
     </>
   );
 }

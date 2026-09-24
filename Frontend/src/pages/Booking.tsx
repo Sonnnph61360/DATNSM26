@@ -2,7 +2,7 @@ import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } fro
 import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
-
+  CalendarDays, Clock, MapPin, CheckCircle2, Loader2, Wallet, QrCode, Tag, ChevronRight, ShieldCheck, Sparkles, ArrowLeft
 } from "lucide-react";
 import {
   api, Court, Field, formatCurrency, getBookedSlots, invalidateApiCache, isSlotConflict,
@@ -48,13 +48,9 @@ export default function Booking() {
     phone: getUser()?.phone || "",
     note: "",
   });
-
-  // Hình thức thanh toán: Đặt cọc 30%, Thanh toán 100%, Tiền mặt
   const [paymentMethod, setPaymentMethod] = useState<"deposit" | "full" | "cash">("deposit");
-  // Cổng thanh toán: Cổng VNPay hoặc Quét mã VietQR
-  const [paymentGateway, setPaymentGateway] = useState<"vnpay" | "vietqr">("vnpay");
-
   const [bookedSlots, setBookedSlots] = useState<Awaited<ReturnType<typeof getBookedSlots>>>([]);
+
   const [endDate, setEndDate] = useState("");
   
   // State dịch vụ đi kèm
@@ -74,13 +70,13 @@ export default function Booking() {
     return slots;
   }, [field?.openTime, field?.closeTime]);
 
-
+  // Kiểm tra thời lượng thuê có vượt quá giờ đóng cửa của cơ sở đã chọn.
   const isDurationValid = useCallback((dur: number): boolean => {
     if (!time) return true;
     return getEndTime(time, dur) <= closingTime;
   }, [time, closingTime]);
 
-
+  // Tự động điều chỉnh thời lượng về 1 giờ nếu chuyển sang giờ muộn
   useEffect(() => {
     if (time && !isDurationValid(duration)) {
       const validOption = DURATIONS.find((d) => isDurationValid(d.value));
@@ -105,6 +101,7 @@ export default function Booking() {
     return dates;
   }, [date, endDate]);
 
+  // Tính tổng tiền các dịch vụ phát sinh
   const servicesTotal = (balls * 20000) + (bibs * 10000) + (water * 10000) + (mineralWater * 15000);
 
   const [voucherCode, setVoucherCode] = useState("");
@@ -149,7 +146,7 @@ export default function Booking() {
       const slots = await getBookedSlots(courtId, date, force);
       setBookedSlots(slots);
     } catch {
-
+      // Giữ nguyên dữ liệu hiện có khi mạng lỗi để không vô tình mở lại ca đã giữ.
     }
   }, [courtId, date]);
 
@@ -157,7 +154,8 @@ export default function Booking() {
     refreshBookedSlots();
   }, [refreshBookedSlots]);
 
-
+  // Khi khách quay lại từ Paygate hoặc có người khác vừa tạo đơn, lấy dữ liệu
+  // mới từ API thay vì đợi người dùng F5 trang.
   useEffect(() => {
     if (!courtId || !date) return;
     const refresh = () => refreshBookedSlots(true);
@@ -171,7 +169,9 @@ export default function Booking() {
     };
   }, [courtId, date, refreshBookedSlots]);
 
-
+  // Chỉ làm mờ các mốc thực sự nằm trong ca đã giữ. Ví dụ ca 16:00–18:00
+  // làm mờ 16:00, 16:30, 17:00, 17:30; 15:30 vẫn hiện để báo va chạm rõ ràng
+  // nếu người dùng chọn thời lượng kéo sang ca đã giữ.
   const slotDisabled = (slot: string) => {
     const [hour, minute] = slot.split(":").map(Number);
     const slotMinute = hour * 60 + minute;
@@ -184,7 +184,6 @@ export default function Booking() {
   };
   const overlappingBooking = (slot: string, selectedDuration = duration) =>
     bookedSlots.find((b) => isSlotConflict(b.time, b.duration, slot, selectedDuration));
-
 
   const selectTime = (slot: string) => {
     const conflict = overlappingBooking(slot);
@@ -206,10 +205,6 @@ export default function Booking() {
       toast.error("Vui lòng nhập mã khuyến mãi");
       return;
     }
-    if (subTotal <= 0) {
-      toast.error("Vui lòng chọn sân và thời gian đặt sân trước khi áp dụng voucher!");
-      return;
-    }
     setVoucherLoading(true);
     try {
       const res = await api.get(`/vouchers?code=${voucherCode.trim()}`);
@@ -222,25 +217,26 @@ export default function Booking() {
       const voucher = res.data[0];
       const now = new Date().toISOString().slice(0, 10);
 
-
       if (voucher.validUntil && voucher.validUntil < now) {
         toast.error("Mã khuyến mãi đã hết hạn sử dụng!");
         setVoucherLoading(false);
         return;
       }
 
-
+      if (voucher.usageLimit !== undefined && voucher.usedCount >= voucher.usageLimit) {
         toast.error("Mã khuyến mãi đã hết lượt sử dụng!");
         setVoucherLoading(false);
         return;
       }
 
       let discountAmount = 0;
-
+      if (voucher.discountPercent) {
+        discountAmount = Math.round((subTotal * voucher.discountPercent) / 100);
+      } else if (voucher.discountAmount) {
+        discountAmount = voucher.discountAmount;
       }
 
       discountAmount = Math.min(discountAmount, subTotal);
-
 
       setAppliedVoucher({
         code: voucher.code,
@@ -317,18 +313,19 @@ export default function Booking() {
       toast.error("Số điện thoại không hợp lệ");
       return;
     }
-
+    if (overlappingBooking(time)) {
+      toast.error("Khung giờ này bị chồng với một ca đã đặt. Vui lòng chỉnh giờ hoặc thời lượng.");
+      return;
+    }
 
     const user = getUser();
     setLoading(true);
 
-    // =========================================================================
-    // SỬA LỖI: LỌC BỎ CÁC ĐƠN DO CHÍNH USER HIỆN TẠI ĐÃ TẠO NHÁP Ở BƯỚC TRƯỚC
-    // =========================================================================
     try {
       for (const d of recurringDates) {
         const slots = await getBookedSlots(selectedCourt.id, d, true);
-
+        if (slots.some((b) => isSlotConflict(b.time, b.duration, time, duration))) {
+          toast.error(`Khung giờ ngày ${d} vừa được đặt. Vui lòng chọn giờ khác.`);
           if (d === date) setBookedSlots(slots);
           setLoading(false);
           return;
@@ -371,7 +368,11 @@ export default function Booking() {
     };
 
     try {
-
+      // Tạo đơn trước khi vào Paygate để khách thoát trang vẫn thấy một đơn
+      // "chưa thanh toán". Backend luôn khởi tạo paymentStatus = unpaid.
+      const res = await api.post("/bookings", payload);
+      // Đơn đã được backend giữ slot ngay tại đây, trước khi chuyển Paygate.
+      // Xóa cache và cập nhật UI tức thì để quay lại không cần F5.
       for (const bookedDate of recurringDates) {
         invalidateApiCache(`bookings:date:${bookedDate}`);
       }
@@ -381,7 +382,6 @@ export default function Booking() {
           : [...previous, res.data]);
       }
       window.dispatchEvent(new CustomEvent("booking:created", { detail: res.data }));
-
 
       if (paymentMethod === "cash") {
         const code = `BK${String(res.data.id).padStart(6, "0")}`;
@@ -393,12 +393,13 @@ export default function Booking() {
           paymentMethod: "cash",
           checkinQrUrl,
         });
-
+        toast.success("Đặt sân thành công!");
         setLoading(false);
         return;
       }
 
-
+      setLoading(false);
+      navigate("/paygate", { state: { payload, booking: res.data, deposit, total } });
     } catch (error: unknown) {
       const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast.error(errorMessage || "Tạo đơn đặt sân thất bại. Vui lòng thử lại!");
@@ -729,7 +730,7 @@ export default function Booking() {
                     name="fullName"
                     value={customer.fullName}
                     onChange={handleCustomerChange}
-
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-amber-400 text-slate-900 rounded-xl px-4 py-3 text-sm outline-none transition-all placeholder:text-slate-400"
                     placeholder="Nguyễn Văn A"
                   />
                 </div>
@@ -739,7 +740,7 @@ export default function Booking() {
                     name="phone"
                     value={customer.phone}
                     onChange={handleCustomerChange}
-
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-amber-400 text-slate-900 rounded-xl px-4 py-3 text-sm outline-none transition-all placeholder:text-slate-400"
                     placeholder="0987xxxxxx"
                   />
                 </div>
@@ -762,65 +763,61 @@ export default function Booking() {
 
             {currentStep === 3 && <>
             {/* 5. Phương thức thanh toán */}
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 md:p-8 shadow-sm">
+              <h3 className="text-lg font-extrabold text-slate-950 mb-6 flex items-center gap-2.5">
+                <span className="w-7 h-7 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 flex items-center justify-center text-xs font-black">5</span>
+                Phương thức thanh toán
+              </h3>
 
-
-              {/* Chọn kênh thanh toán (Chỉ hiển thị khi KHÔNG chọn Tiền mặt) */}
-              {paymentMethod !== "cash" && (
-                <div className="pt-4 border-t border-slate-100">
-                  <h4 className="text-sm font-extrabold text-slate-950 mb-3 flex items-center gap-2">
-                    <CreditCard className="w-4 h-4 text-amber-500" />
-                    Chọn kênh thanh toán trực tuyến
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[
+                  {
+                    id: "deposit",
+                    title: "Đặt cọc (30%)",
+                    desc: "Chuyển khoản cọc giữ sân",
+                    badge: "Phổ biến",
+                  },
+                  {
+                    id: "full",
+                    title: "Thanh toán 100%",
+                    desc: "Thẻ ATM, Visa, QR VNPay",
+                    badge: "Nhanh nhất",
+                  },
+                  {
+                    id: "cash",
+                    title: "Tiền mặt tại sân",
+                    desc: "Thanh toán trực tiếp khi đến",
+                    badge: "Linh hoạt",
+                  },
+                ].map((item) => {
+                  const active = paymentMethod === item.id;
+                  return (
                     <label
-
+                      key={item.id}
+                      className={`block rounded-2xl p-5 cursor-pointer border transition-all relative overflow-hidden ${
+                        active
+                          ? "bg-yellow-500/10 border-yellow-500 ring-1 ring-yellow-500/40"
                           : "bg-slate-50 border-slate-200 hover:border-amber-300"
                       }`}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-start justify-between mb-2">
                         <input
                           type="radio"
-
-                    </label>
-
-                    <label
-                      className={`block rounded-2xl p-4 cursor-pointer border transition-all ${
-                        paymentGateway === "vietqr"
-                          ? "bg-amber-50 border-amber-400 ring-1 ring-amber-400"
-                          : "bg-slate-50 border-slate-200 hover:border-amber-300"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="radio"
-                          name="paymentGateway"
-                          checked={paymentGateway === "vietqr"}
-                          onChange={() => setPaymentGateway("vietqr")}
-                          className="accent-amber-500"
+                          name="paymentMethod"
+                          checked={active}
+                          onChange={() => setPaymentMethod(item.id as "deposit" | "full" | "cash")}
+                          className="accent-yellow-500 w-4 h-4 mt-1"
                         />
-                        <div>
-                          <div className="font-bold text-slate-900 text-sm">Quét mã VietQR</div>
-                          <div className="text-xs text-slate-500">Chuyển khoản Ngân hàng</div>
-                        </div>
+                        <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-500">
+                          {item.badge}
+                        </span>
                       </div>
+                      <div className="font-bold text-slate-900 text-base mt-2">{item.title}</div>
+                      <div className="text-xs text-slate-500 mt-1">{item.desc}</div>
                     </label>
-                  </div>
-                </div>
-              )}
-            </div>
-            </>}
-
-            <div className="flex items-center justify-between gap-3 pt-1 lg:hidden">
-              {currentStep > 1 ? (
-                <button type="button" onClick={() => goToStep(currentStep - 1)} className="btn-outline min-h-12 flex-1 rounded-xl px-5 py-3 text-sm font-bold">
-                  <ArrowLeft className="mr-2 inline h-4 w-4" /> Quay lại
-                </button>
-              ) : <span />}
-              {currentStep < 3 && (
-                <button type="button" onClick={advanceStep} className="btn-primary min-h-12 flex-1 rounded-xl px-5 py-3 text-sm font-extrabold">
-                  Tiếp tục <ChevronRight className="ml-1 inline h-4 w-4" />
-                </button>
-              )}
+                  );
+                })}
+              </div>
             </div>
             </>}
 

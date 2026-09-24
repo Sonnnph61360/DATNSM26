@@ -1,10 +1,10 @@
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
+import { OAuth2Client } from "google-auth-library";
 import User from "../models/User";
 import { nextId } from "../utils/ids";
 import { serialize } from "../utils/serialize";
-import { sendMail } from "../utils/mailer"; // <-- Import hàm sendMail từ file mailer của bạn
 
 function signToken(user) {
   return jwt.sign(
@@ -17,6 +17,48 @@ function signToken(user) {
     process.env.JWT_SECRET || "datn_sm26_jwt_secret_change_me",
     { expiresIn: process.env.JWT_EXPIRES || "7d" }
   );
+}
+
+const googleClient = new OAuth2Client();
+
+/** POST /auth/google — verify a Google Identity Services credential */
+export async function googleLogin(req, res) {
+  try {
+    const { credential } = req.body;
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!credential || !clientId) {
+      return res.status(400).json({ message: "Thiếu thông tin đăng nhập Google" });
+    }
+
+    const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: clientId });
+    const payload = ticket.getPayload();
+    if (!payload?.sub || !payload.email || payload.email_verified !== true) {
+      return res.status(401).json({ message: "Tài khoản Google chưa được xác thực" });
+    }
+
+    const email = payload.email.toLowerCase();
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = await User.create({
+        id: await nextId("users"),
+        email,
+        password: await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10),
+        googleId: payload.sub,
+        fullName: payload.name || "",
+        avatar: payload.picture || "",
+        role: "user",
+      });
+    } else {
+      if (!user.googleId) user.googleId = payload.sub;
+      if (!user.avatar && payload.picture) user.avatar = payload.picture;
+      if (!user.fullName && payload.name) user.fullName = payload.name;
+      await user.save();
+    }
+
+    return res.json({ accessToken: signToken(user), user: serialize(user) });
+  } catch (e) {
+    return res.status(401).json({ message: "Đăng nhập Google không hợp lệ" });
+  }
 }
 
 /** POST /register — giống json-server-auth */
@@ -38,6 +80,8 @@ export async function register(req, res) {
       password: hash,
       fullName: fullName || "",
       phone: phone || "",
+      // Public registration may only create a customer account. Admin roles
+      // must be assigned by an authenticated administrator in a separate flow.
       role: "user",
     });
     const accessToken = signToken(user);
@@ -72,7 +116,7 @@ export async function login(req, res) {
   }
 }
 
-/** POST /forgot-password */
+/** POST /forgot-password — demo reset flow; production should email the token */
 export async function forgotPassword(req, res) {
   try {
     const email = String(req.body.email || "").trim().toLowerCase();
@@ -88,24 +132,7 @@ export async function forgotPassword(req, res) {
     user.resetTokenExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
     await user.save();
 
-    // Tạo nội dung HTML email
-    const resetUrl = `http://localhost:5173/reset-password?token=${resetToken}`;
-    const htmlContent = `
-      <h3>Yêu cầu đặt lại mật khẩu</h3>
-      <p>Xin chào ${user.fullName || "bạn"},</p>
-      <p>Bạn đã yêu cầu đặt lại mật khẩu tại hệ thống Sân Bóng.</p>
-      <p>Bấm vào nút dưới đây để đổi mật khẩu (có hiệu lực trong 15 phút):</p>
-      <p><a href="${resetUrl}" style="background: #4CAF50; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; display: inline-block;">Đặt lại mật khẩu</a></p>
-      <p>Mã Token của bạn: <b>${resetToken}</b></p>
-    `;
-
-    // Gọi hàm sendMail từ file mailer của bạn
-    const isSent = await sendMail(user.email, "Hướng dẫn đặt lại mật khẩu", htmlContent);
-
-    if (!isSent) {
-      return res.status(500).json({ message: "Gửi email thất bại, vui lòng thử lại sau." });
-    }
-
+    // The demo UI uses this token as a stand-in for an email link.
     if (process.env.NODE_ENV !== "production") response.resetToken = resetToken;
     return res.json(response);
   } catch (e) {

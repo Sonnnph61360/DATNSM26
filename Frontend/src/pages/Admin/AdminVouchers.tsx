@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Table, Button, Input, Modal, Form, Select, InputNumber, Switch, message, Spin } from "antd";
-import { Ticket, Plus, Search, Percent, DollarSign, BarChart3, CheckCircle2, Archive } from "lucide-react";
+import { Ticket, Plus, Search, Percent, DollarSign, BarChart3, CheckCircle2 } from "lucide-react";
 import { api, formatCurrency } from "../../lib/api";
+import { AdminEmptyState } from '../../components/EmptyState';
 
 interface Voucher {
     id: number;
@@ -125,14 +126,23 @@ export default function AdminVouchers() {
                     onChange={e => setSearchText(e.target.value)}
                 />
 
-                <Table
-                    className="modern-table"
-                    dataSource={filtered}
-                    columns={columns}
-                    rowKey="id"
-                    locale={{ emptyText: <div className="py-12 text-center text-gray-500"><Archive className="mx-auto mb-3 text-yellow-500" /><p>Chưa có mã khuyến mãi phù hợp</p></div> }}
-                    components={{ header: { cell: (props: any) => <th {...props} className="!bg-black/30 !text-gray-500 font-bold uppercase text-xs tracking-wider !border-b-white/10 py-4" /> } }}
-                />
+                {filtered.length === 0 ? (
+                    <AdminEmptyState
+                        title={vouchers.length ? "Không tìm thấy voucher" : "Chưa có voucher nào"}
+                        description={vouchers.length ? "Thử một từ khóa khác hoặc xóa bộ lọc để xem lại các mã hiện có." : "Tạo mã đầu tiên để bắt đầu thu hút người chơi và lấp đầy các khung giờ trống."}
+                        actionLabel={vouchers.length ? "Xóa tìm kiếm" : "Tạo voucher đầu tiên"}
+                        onAction={() => vouchers.length ? setSearchText("") : setIsModalOpen(true)}
+                        icon="ticket"
+                    />
+                ) : (
+                    <Table
+                        className="modern-table"
+                        dataSource={filtered}
+                        columns={columns}
+                        rowKey="id"
+                        components={{ header: { cell: (props: any) => <th {...props} className="!bg-black/30 !text-gray-500 font-bold uppercase text-xs tracking-wider !border-b-white/10 py-4" /> } }}
+                    />
+                )}
             </div>
 
             <Modal

@@ -89,6 +89,37 @@ h1, h2, h3, .font-display {
   background: transparent;
 }
 
+.ant-modal-root .ant-modal-wrap {
+  animation: modalBackdropIn 0.2s ease-out both;
+}
+.ant-modal-root .ant-modal {
+  animation: modalPanelIn 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.ant-dropdown {
+  transform-origin: top right;
+  animation: dropdownIn 0.16s ease-out both;
+}
+.app-toast {
+  animation: toastIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes modalBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modalPanelIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes dropdownIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translate3d(18px, -6px, 0) scale(0.97); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
 .modern-table .ant-table { background: transparent !important; }
 .modern-table .ant-table-thead > tr > th {
   background-color: transparent !important;

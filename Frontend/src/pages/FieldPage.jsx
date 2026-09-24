@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
-  Car, ChevronRight, Droplets, Lightbulb, Loader2, MapPin, RotateCcw,
+  Car, ChevronRight, Droplets, Heart, Lightbulb, MapPin, RotateCcw,
   Search, SlidersHorizontal, Star, Wifi, X,
 } from "lucide-react";
 import { fetchFields, formatCurrency } from "../lib/api";
+import { FieldGridSkeleton } from "../components/Skeletons";
+import EmptyState from "../components/EmptyState";
+import { useFavorites } from "../hooks/useFavorites";
 
 const PAGE_SIZE = 8;
 const distances = [0.5, 1.2, 2.8, 4.4, 7.5, 9.2];
@@ -26,6 +29,7 @@ export default function FieldPage() {
   const [facilityType, setFacilityType] = useState("all");
   const [amenities, setAmenities] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
+  const { favoriteIds, toggleFavorite } = useFavorites();
   const [page, setPage] = useState(1);
   const preferredDate = searchParams.get("date") || "";
 
@@ -154,12 +158,19 @@ export default function FieldPage() {
               <div className="relative h-[460px] bg-slate-100"><iframe key={googleMapQuery} title={`Google Maps - ${googleMapQuery}`} src={googleEmbedUrl} className="absolute inset-0 h-full w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen /></div>
             </section>}
             {loading ? (
-              <div className="flex min-h-96 flex-col items-center justify-center gap-3" role="status"><Loader2 className="h-9 w-9 animate-spin text-amber-500" /><p className="text-sm font-semibold text-slate-500">Đang tải danh sách sân...</p></div>
+              <div role="status" aria-label="Đang tải danh sách sân"><FieldGridSkeleton count={6} /></div>
             ) : paginated.length === 0 ? (
-              <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center"><Search className="mx-auto h-10 w-10 text-slate-400" /><h2 className="mt-4 text-2xl font-extrabold">Không tìm thấy sân phù hợp</h2><p className="mt-2 text-sm text-slate-500">Hãy mở rộng khu vực hoặc bỏ bớt tiện ích.</p><button type="button" onClick={resetFilters} className="btn-primary mt-6 rounded-xl px-6 py-3 text-sm font-bold">Xóa bộ lọc</button></div>
+              <EmptyState
+                title={fields.length === 0 ? "Chưa có sân trong hệ thống" : "Không tìm thấy sân phù hợp"}
+                description={fields.length === 0 ? "Danh sách sân đang được cập nhật. Hãy quay lại sau hoặc xem bản đồ để khám phá khu vực khác." : "Hãy mở rộng khu vực hoặc bỏ bớt tiện ích để tìm được sân phù hợp."}
+                actionLabel={fields.length === 0 ? "Xem bản đồ" : "Xóa bộ lọc"}
+                actionTo={fields.length === 0 ? mapHref : undefined}
+                onAction={fields.length === 0 ? undefined : resetFilters}
+                icon="search"
+              />
             ) : (
               <div className="grid gap-6 md:grid-cols-2">
-                {paginated.map((field, index) => <FieldCard key={field.id} field={field} detailQuery={detailQuery} index={index} />)}
+                {paginated.map((field, index) => <FieldCard key={field.id} field={field} detailQuery={detailQuery} index={index} isFavorite={favoriteIds.has(field.id)} onToggleFavorite={toggleFavorite} />)}
               </div>
             )}
             {totalPages > 1 && <div className="mt-10 flex justify-center gap-2">{Array.from({ length: totalPages }, (_, index) => <button key={index} type="button" onClick={() => setPage(index + 1)} className={"h-11 w-11 rounded-xl text-sm font-bold " + (page === index + 1 ? "bg-amber-400 text-slate-950" : "border border-slate-200 bg-white text-slate-600")}>{index + 1}</button>)}</div>}
@@ -176,10 +187,10 @@ function FilterSelect({ label, value, setValue, options, allLabel }) {
   return <label className="block"><span className="mb-3 block text-sm font-extrabold text-slate-900">{label}</span><select value={value} onChange={(event) => setValue(event.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-amber-400">{options.map((option) => <option key={option} value={option}>{option === "all" ? allLabel : option}</option>)}</select></label>;
 }
 
-function FieldCard({ field, detailQuery, index }) {
+function FieldCard({ field, detailQuery, index, isFavorite, onToggleFavorite }) {
   return (
     <Link to={"/field/" + field.id + detailQuery} className="field-card group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm animate-fade-in-up" style={{ animationDelay: (index * 0.05) + "s" }}>
-      <div className="relative h-56 overflow-hidden bg-slate-100"><img src={field.imageUrl || field.image} alt={field.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /><span className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-extrabold shadow-sm">{field.sportLabel || field.type}</span><span className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-slate-950/80 px-2.5 py-1.5 text-xs font-bold text-white"><Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />{field.rating?.toFixed(1) || "4.8"}</span></div>
+      <div className="relative h-56 overflow-hidden bg-slate-100"><img src={field.imageUrl || field.image} alt={field.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /><span className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-extrabold shadow-sm">{field.sportLabel || field.type}</span><button type="button" aria-label={isFavorite ? `Bỏ yêu thích ${field.name}` : `Thêm ${field.name} vào yêu thích`} onClick={(event) => { event.preventDefault(); event.stopPropagation(); onToggleFavorite(field.id); }} className={`absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full shadow-sm transition ${isFavorite ? "bg-red-500 text-white" : "bg-white/95 text-slate-600 hover:text-red-500"}`}><Heart className={`h-5 w-5 ${isFavorite ? "fill-current" : ""}`} /></button><span className="absolute bottom-4 right-4 flex items-center gap-1 rounded-full bg-slate-950/80 px-2.5 py-1.5 text-xs font-bold text-white"><Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />{field.rating?.toFixed(1) || "4.8"}</span></div>
       <div className="flex flex-1 flex-col p-6"><div className="flex-1"><div className="flex items-start justify-between gap-3"><h2 className="line-clamp-1 text-xl font-extrabold text-slate-950 group-hover:text-amber-600">{field.name}</h2><span className="shrink-0 text-xs font-bold text-emerald-700">{field.distance} km</span></div><p className="mt-2 flex items-start gap-2 text-sm text-slate-500"><MapPin className="mt-0.5 h-4 w-4 shrink-0" /><span className="line-clamp-2">{field.address}</span></p><div className="mt-4 flex flex-wrap gap-2"><span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">{field.facilityType}</span><span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">Mở cửa {field.openTime || "06:00"} - {field.closeTime || "22:00"}</span></div></div><div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-5"><div><p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Giá từ</p><p className="mt-1 text-lg font-extrabold text-amber-600">{formatCurrency(field.priceFrom || field.pricePerHour)}<span className="text-xs text-slate-400"> / giờ</span></p></div><span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 group-hover:bg-amber-400"><ChevronRight className="h-5 w-5" /></span></div></div>
     </Link>
   );

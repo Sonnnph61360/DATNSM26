@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Col, Row, Spin, Table } from "antd";
+import { Col, Row, Table } from "antd";
 import { DollarSign, CalendarCheck, Users, TrendingUp, Sparkles, Activity } from "lucide-react";
 import { api, Booking, Court, Field, formatCurrency } from "../../lib/api";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { DashboardSkeleton } from "../../components/Skeletons";
+import EmptyState from "../../components/EmptyState";
 
 function startOfMonth() {
   const d = new Date();
@@ -116,11 +118,11 @@ export default function Dashboard() {
   }, [bookings, courts, fields]);
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center py-32">
-        <Spin size="large" />
-      </div>
-    );
+    return <div className="p-6" role="status" aria-label="Đang tải dashboard"><DashboardSkeleton /></div>;
+  }
+
+  if (bookings.length === 0) {
+    return <div className="p-6"><EmptyState title="Dashboard đang chờ dữ liệu" description="Chưa có đơn đặt sân nào để tổng hợp. Khi đơn đầu tiên được tạo, doanh thu và tỷ lệ lấp đầy sẽ xuất hiện tại đây." actionLabel="Xem danh sách đơn" actionTo="/admin/bookings" icon="booking" /></div>;
   }
 
   return (

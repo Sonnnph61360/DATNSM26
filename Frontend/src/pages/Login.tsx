@@ -3,6 +3,7 @@ import { MailOutlined, LockOutlined } from "@ant-design/icons";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { api } from "../lib/api";
+import GoogleSignInButton from "../components/GoogleSignInButton";
 
 function Login() {
   const navigate = useNavigate();
@@ -136,6 +137,13 @@ function Login() {
                 Đăng nhập →
               </Button>
             </Form>
+
+            <div className="my-5 flex items-center gap-3 text-xs text-gray-400">
+              <span className="h-px flex-1 bg-gray-200" />
+              <span>hoặc</span>
+              <span className="h-px flex-1 bg-gray-200" />
+            </div>
+            <GoogleSignInButton onSuccess={() => navigate("/")} />
 
             <p className="mt-6 text-center text-sm text-gray-500">
               Chưa có tài khoản?{" "}

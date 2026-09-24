@@ -9,10 +9,18 @@ export default defineConfig(({ mode }) => {
     server: {
       // Cho các thiết bị trong cùng mạng LAN truy cập frontend của máy chủ.
       host: "0.0.0.0",
+      headers: {
+        "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+      },
       proxy: {
         "/api": {
           target: env.VITE_BACKEND_URL || "http://127.0.0.1:3000",
           changeOrigin: true,
+        },
+        "/socket.io": {
+          target: env.VITE_BACKEND_URL || "http://127.0.0.1:3000",
+          changeOrigin: true,
+          ws: true,
         },
       },
     },

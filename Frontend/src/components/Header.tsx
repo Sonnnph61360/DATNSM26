@@ -2,16 +2,18 @@ import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   BookOpen, LogIn, LogOut, User, Shield, CalendarDays, Menu, X, Home, Trophy,
-  Search, MapPin, Languages, Users, Map,
+  Bell, Search, MapPin, Languages, Users, Map, Heart,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import toast from "react-hot-toast";
+import { useNotifications } from "../hooks/useNotifications";
 
 export default function Header() {
   const { user, loggedIn, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { unreadCount } = useNotifications();
 
   const handleLogout = () => {
     logout();
@@ -106,6 +108,17 @@ export default function Header() {
                   <CalendarDays className="w-4 h-4" />
                   Đơn của tôi
                 </Link>
+                <Link
+                  to="/favorites"
+                  className="flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-slate-950 hover:bg-slate-100 px-3 py-2 rounded-xl transition-all"
+                >
+                  <Heart className="w-4 h-4" />
+                  Yêu thích
+                </Link>
+                <Link to="/my-bookings" aria-label={`${unreadCount} thông báo chưa đọc`} title="Thông báo" className="relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-950">
+                  <Bell className="h-4 w-4" />
+                  {unreadCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-black text-white">{unreadCount > 99 ? "99+" : unreadCount}</span>}
+                </Link>
 
                 {isAdmin && (
                   <button
@@ -193,6 +206,21 @@ export default function Header() {
                     className="flex items-center gap-3 text-sm font-semibold text-slate-700 hover:text-slate-950 hover:bg-slate-100 px-3 py-3 rounded-lg transition-all"
                   >
                     <CalendarDays className="w-4 h-4" /> Đơn của tôi
+                  </Link>
+                  <Link
+                    to="/favorites"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-3 text-sm font-semibold text-slate-700 hover:text-slate-950 hover:bg-slate-100 px-3 py-3 rounded-lg transition-all"
+                  >
+                    <Heart className="w-4 h-4" /> Sân yêu thích
+                  </Link>
+                  <Link
+                    to="/my-bookings"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center justify-between text-sm font-semibold text-slate-700 hover:text-slate-950 hover:bg-slate-100 px-3 py-3 rounded-lg transition-all"
+                  >
+                    <span className="flex items-center gap-3"><Bell className="w-4 h-4" /> Thông báo</span>
+                    {unreadCount > 0 && <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-black text-white">{unreadCount > 99 ? "99+" : unreadCount}</span>}
                   </Link>
                   <Link
                     to="/profile"

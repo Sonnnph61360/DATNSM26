@@ -5,7 +5,8 @@ import { api, Booking, formatCurrency } from "../lib/api";
 import { getUser } from "../lib/auth";
 import toast from "react-hot-toast";
 import BookingPass from "../components/BookingPass";
-import { createDemoBookings } from "../data/demoData";
+import { BookingListSkeleton } from "../components/Skeletons";
+import EmptyState from "../components/EmptyState";
 
 const statusConfig: Record<string, { label: string; className: string; icon: React.ReactNode; dot: string }> = {
   pending: {
@@ -58,15 +59,6 @@ type BookingDetail = Booking & {
   courtDetail?: { name: string; type?: string; capacity?: number } | null;
 };
 
-type RefundNotification = {
-  id: number;
-  bookingId: number;
-  type: "refund_completed";
-  title: string;
-  message: string;
-  readAt?: string | null;
-};
-
 export default function MyBookings() {
   const navigate = useNavigate();
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -93,7 +85,7 @@ export default function MyBookings() {
     }
 
     try {
-      const res = await api.get<Booking[]>("/bookings");
+      const res = await api.get<Booking[]>("/bookings", { params: { scope: "mine" } });
       const userId = String(user.id);
       const userEmail = user.email?.trim().toLowerCase();
       const userPhone = user.phone?.replace(/\D/g, "");
@@ -126,12 +118,7 @@ export default function MyBookings() {
           }
         )
         .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-      setBookings(mine.length ? mine : createDemoBookings({
-        fullName: user.fullName || "Khách hàng GoldenState",
-        phone: user.phone || "0900000000",
-        email: user.email,
-        userId: Number(user.id),
-      }));
+      setBookings(mine);
     } catch {
       toast.error("Không tải được đơn đặt sân");
     } finally {
@@ -142,34 +129,6 @@ export default function MyBookings() {
   useEffect(() => {
     load();
   }, [load]);
-
-  // Không dùng socket: hỏi API thông báo định kỳ để đơn đang mở vẫn đổi sang
-  // "Đã hoàn tiền" sau khi admin xác nhận, không cần khách F5.
-  useEffect(() => {
-    if (!user) return;
-    let active = true;
-    const checkRefundNotifications = async () => {
-      try {
-        const response = await api.get<RefundNotification[]>("/notifications");
-        const unread = response.data.filter((notification) =>
-          notification.type === "refund_completed" && !notification.readAt
-        );
-        if (!unread.length) return;
-        await Promise.all(unread.map((notification) => api.patch(`/notifications/${notification.id}/read`)));
-        if (!active) return;
-        unread.forEach((notification) => toast.success(notification.message, { duration: 6000 }));
-        load();
-      } catch {
-        // Khách chưa đăng nhập hoặc mất mạng: không hiển thị lỗi lặp lại.
-      }
-    };
-    checkRefundNotifications();
-    const interval = window.setInterval(checkRefundNotifications, 10_000);
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-    };
-  }, [user, load]);
 
   const openCancelModal = (booking: Booking) => {
     const needsRefund = booking.paymentStatus === "paid" || booking.paymentStatus === "deposit_paid";
@@ -253,12 +212,7 @@ export default function MyBookings() {
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-36 gap-3 bg-[#f7f8f6] min-h-screen">
-        <Loader2 className="w-10 h-10 animate-spin text-yellow-500" />
-        <p className="text-gray-400 text-sm font-medium">Đang tải lịch sử đơn của bạn...</p>
-      </div>
-    );
+    return <div className="min-h-screen bg-[#f7f8f6] px-4 py-10"><div className="mx-auto max-w-4xl" role="status" aria-label="Đang tải lịch sử đơn"><div className="mb-8 h-32 animate-pulse rounded-3xl bg-white" /><BookingListSkeleton /></div></div>;
   }
 
   const stats = {
@@ -317,16 +271,7 @@ export default function MyBookings() {
 
         {/* Bookings List */}
         {bookings.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-slate-200 p-16 text-center shadow-sm">
-            <div className="text-6xl mb-4 opacity-70">🏀</div>
-            <h3 className="text-xl font-bold text-slate-950 mb-2">Bạn chưa có đơn đặt sân nào</h3>
-            <p className="text-slate-500 text-sm mb-6 max-w-sm mx-auto">
-              Hãy chọn sân đấu yêu thích và tận hưởng những giờ phút thi đấu bùng nổ cùng đồng đội!
-            </p>
-            <Link to="/fields" className="btn-primary inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm">
-              Khám phá sân bóng ngay →
-            </Link>
-          </div>
+          <EmptyState title="Lịch chơi của bạn đang trống" description="Hãy chọn một sân đấu yêu thích và giữ chỗ cho trận đấu tiếp theo cùng đồng đội." actionLabel="Khám phá sân bóng" actionTo="/fields" icon="booking" />
         ) : (
           <div className="space-y-4">
             {bookings.map((b) => {

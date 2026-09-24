@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { api } from "../lib/api";
+import GoogleSignInButton from "../components/GoogleSignInButton";
 
 function Register() {
   const navigate = useNavigate();
@@ -207,6 +208,13 @@ function Register() {
                 Tạo tài khoản miễn phí 🎉
               </Button>
             </Form>
+
+            <div className="my-5 flex items-center gap-3 text-xs text-gray-400">
+              <span className="h-px flex-1 bg-gray-200" />
+              <span>hoặc đăng ký bằng</span>
+              <span className="h-px flex-1 bg-gray-200" />
+            </div>
+            <GoogleSignInButton onSuccess={() => navigate("/")} />
 
             <p className="mt-5 text-center text-sm text-gray-500">
               Đã có tài khoản?{" "}

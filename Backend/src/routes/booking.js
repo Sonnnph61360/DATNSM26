@@ -11,14 +11,14 @@ import {
   completeRefund,
   checkInBooking,
 } from "../controllers/booking";
-import { adminRequired } from "../middleware/auth";
+import { adminRequired, attachUser } from "../middleware/auth";
 
 const router = Router();
-router.get("/", getBookings);
+router.get("/", attachUser, getBookings);
 router.get("/refunds", adminRequired, getRefundRequests);
 router.get("/:id/detail", getBookingDetail);
 router.get("/:id", getBooking);
-router.post("/", createBooking);
+router.post("/", attachUser, createBooking);
 router.post("/:id/cancel", cancelBooking);
 router.post("/:id/refund", adminRequired, completeRefund);
 router.post("/:id/check-in", adminRequired, checkInBooking);

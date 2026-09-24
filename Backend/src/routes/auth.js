@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
 	login,
 	register,
+	googleLogin,
 	listUsers,
 	forgotPassword,
 	resetPassword,
@@ -12,6 +13,7 @@ import { updateProfile, changePassword } from "../controllers/auth";
 const router = Router();
 router.post("/login", login);
 router.post("/register", register);
+router.post("/auth/google", googleLogin);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
 router.get("/users", listUsers);

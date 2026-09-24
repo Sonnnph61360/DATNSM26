@@ -1,19 +1,22 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   ArrowRight, BadgeCheck, CalendarCheck2, CalendarDays, ChevronRight,
-  Gift, Loader2, Map, MapPin, Newspaper, Search, ShieldCheck,
-  Star, Trophy, Users, Zap,
+  Gift, Map, MapPin, Newspaper, Search, ShieldCheck,
+  Star, Users, Zap,
 } from "lucide-react";
 import banner2 from "../assets/banner2.jpg";
 import { fetchFields, Field, formatCurrency } from "../lib/api";
 import { blogs } from "./blogData";
+import { FieldGridSkeleton } from "../components/Skeletons";
+import EmptyState from "../components/EmptyState";
 import {
   clubs, locationOptions, rankings, tournaments,
 } from "../data/marketplaceMock";
 
 const quickActions = [
-
+  { to: "/fields", icon: Search, title: "Tìm sân phù hợp", description: "Lọc theo khu vực và thời gian" },
   { to: "/map", icon: Map, title: "Khám phá quanh bạn", description: "Xem vị trí sân trên bản đồ" },
   { to: "/my-bookings", icon: CalendarCheck2, title: "Quản lý lịch chơi", description: "Theo dõi mọi đơn đặt sân" },
   { to: "/about", icon: ShieldCheck, title: "Đặt sân an tâm", description: "Thông tin và giá được minh bạch" },
@@ -62,7 +65,11 @@ export default function Home() {
         <div className="absolute -left-28 top-20 h-72 w-72 rounded-full bg-yellow-300/20 blur-3xl" />
         <div className="absolute -right-24 -top-20 h-80 w-80 rounded-full bg-emerald-200/30 blur-3xl" />
         <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-14 lg:grid-cols-[1.02fr_0.98fr] lg:py-20">
-          <div className="animate-fade-in-up">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, ease: "easeOut" }}
+          >
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-emerald-700 shadow-sm">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
               Nền tảng đặt sân bóng rổ trực tuyến
@@ -79,9 +86,14 @@ export default function Home() {
               <span className="inline-flex items-center gap-2"><Zap className="h-5 w-5 text-amber-500" /> Giữ chỗ nhanh</span>
               <span className="inline-flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-sky-600" /> Thanh toán an toàn</span>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="relative animate-fade-in-up delay-100">
+          <motion.div
+            className="relative"
+            initial={{ opacity: 0, y: 28 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
+          >
             <div className="relative h-[420px] overflow-hidden rounded-[2rem] bg-slate-900 shadow-2xl shadow-slate-900/20 sm:h-[500px]">
               <img src={banner2} alt="Sân bóng rổ GoldenState" className="h-full w-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-transparent to-transparent" />
@@ -99,7 +111,7 @@ export default function Home() {
                 <p className="font-extrabold text-slate-900">Chủ động 24/7</p>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -210,21 +222,22 @@ export default function Home() {
           </div>
 
           {loading ? (
-            <div className="flex min-h-72 items-center justify-center" role="status">
-              <Loader2 className="h-9 w-9 animate-spin text-amber-500" />
-              <span className="sr-only">Đang tải danh sách sân</span>
-            </div>
+            <div role="status" aria-label="Đang tải danh sách sân"><FieldGridSkeleton count={6} /></div>
           ) : fields.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-6 py-16 text-center">
-              <Trophy className="mx-auto h-10 w-10 text-slate-400" />
-              <h3 className="mt-4 text-xl font-extrabold text-slate-900">Chưa tải được danh sách sân</h3>
-              <p className="mt-2 text-sm text-slate-500">Bạn vẫn có thể mở trang tìm sân để thử lại.</p>
-              <Link to="/fields" className="btn-primary mt-6 inline-flex rounded-xl px-5 py-3 text-sm font-bold">Mở danh sách sân</Link>
-            </div>
+            <EmptyState title="Chưa có sân nổi bật" description="Danh sách sân đang được cập nhật. Bạn vẫn có thể mở trang tìm sân để khám phá thêm." actionLabel="Mở danh sách sân" actionTo="/fields" icon="trophy" />
           ) : (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {fields.map((field) => (
-                <Link key={field.id} to={`/field/${field.id}`} className="field-card group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+                <motion.div
+                  key={field.id}
+                  initial={{ opacity: 0, y: 18 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.15 }}
+                  transition={{ duration: 0.35, ease: "easeOut" }}
+                  whileHover={{ y: -5, scale: 1.015 }}
+                  className="field-card group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
+                >
+                <Link to={`/field/${field.id}`} className="block h-full">
                   <div className="relative h-56 overflow-hidden bg-slate-100">
                     <img src={field.imageUrl || field.image} alt={field.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
                     <div className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-extrabold text-slate-800 shadow-sm backdrop-blur">
@@ -246,6 +259,7 @@ export default function Home() {
                     </div>
                   </div>
                 </Link>
+                </motion.div>
               ))}
             </div>
           )}

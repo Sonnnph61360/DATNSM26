@@ -77,12 +77,13 @@ export default function Paygate() {
     }
     setLoading(true);
     try {
-
+      // Booking thường đã được tạo từ trang Đặt sân; không tạo lần hai ở đây.
+      const res = (isBalancePayment || existingBooking) ? { data: booking } : await api.post("/bookings", payload);
 
       if (tab === "card") {
         const vnpayRes = await api.post("/vnpay/create-url", {
           amount: Number(amountToPay),
-
+          orderId: String(res.data.id),
           paymentKind,
           language: "vn",
         });
@@ -93,7 +94,14 @@ export default function Paygate() {
         return;
       }
 
-
+      // VietQR không có webhook trong dự án hiện tại, vì vậy không được tự ghi
+      // nhận là đã thanh toán. Đơn vẫn giữ trạng thái unpaid để khách trả tiếp.
+      toast("Đơn đang chờ xác thực chuyển khoản.", { icon: "⏳" });
+      navigate("/my-bookings", {
+        state: {
+          successId: res.data.id,
+          paymentMethod: isBalancePayment ? "balance" : booking.paymentMethod,
+          payload: booking,
           isAutoTransfer: false,
         },
       });

@@ -1,5 +1,7 @@
 import { Layout, Menu, Avatar, Dropdown } from 'antd';
-
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, CalendarDays, ClipboardList, MapPin, LogOut, Bell, Settings, User, Ticket, Shield, Trophy, MessageCircle } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 
 const { Header, Sider, Content } = Layout;
 
@@ -43,6 +45,11 @@ export default function AdminLayout() {
             key: "/admin/employees",
             icon: <Shield size={18} />,
             label: <Link to="/admin/employees" className="text-sm font-semibold">Phân quyền</Link>,
+        },
+        {
+            key: "/admin/reviews",
+            icon: <MessageCircle size={18} />,
+            label: <Link to="/admin/reviews" className="text-sm font-semibold">Đánh giá</Link>,
         },
     ];
 

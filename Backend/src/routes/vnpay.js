@@ -1,6 +1,9 @@
 import express from "express";
 import crypto from "crypto";
 import Booking from "../models/Booking";
+import Notification from "../models/Notification";
+import { nextId } from "../utils/ids";
+import { emitNotification } from "../utils/notificationSocket";
 import Payment from "../models/Payment";
 import { expirePendingPayments } from "../controllers/booking";
 
@@ -160,6 +163,7 @@ router.get("/return", async (req, res) => {
         const payment = await Payment.findOne({ paymentCode });
         if (!payment) return res.status(404).json({ message: "Không tìm thấy giao dịch", code: "01" });
         const successful = rspCode === "00";
+        const wasConfirmed = booking.status === "confirmed";
         const paidAmount = successful
             ? Math.min(Number(booking.total), (Number(booking.paidAmount) || 0) + Number(payment.amount))
             : Number(booking.paidAmount) || 0;
@@ -184,6 +188,24 @@ router.get("/return", async (req, res) => {
             },
             { upsert: true, new: true }
         );
+        if (successful && !wasConfirmed) {
+            const notification = await Notification.findOneAndUpdate(
+                { bookingId: booking.id, type: "booking_confirmed" },
+                {
+                    $setOnInsert: {
+                        id: await nextId("notifications"),
+                        userId: Number(booking.customer?.userId) || undefined,
+                        email: booking.customer?.email || undefined,
+                        bookingId: booking.id,
+                        type: "booking_confirmed",
+                        title: "Đặt sân đã được xác nhận",
+                        message: `Đơn BK${String(booking.id).padStart(6, "0")} tại ${booking.fieldName} đã được xác nhận.`,
+                    },
+                },
+                { upsert: true, new: true, setDefaultsOnInsert: true }
+            );
+            emitNotification(notification);
+        }
         return res.json({ message: successful ? "Success" : "Failed", code: rspCode, bookingId: actualOrderId });
     } catch (error) {
         console.error("VNPAY Return Error:", error);

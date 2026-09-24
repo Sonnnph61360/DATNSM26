@@ -1,11 +1,13 @@
-
-import { Table, Select, message, Spin, Button, Input, Modal, Form, DatePicker, TimePicker, InputNumber, Divider } from "antd";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Table, Select, message, Button, Input, Modal, Form, DatePicker, TimePicker, InputNumber, Divider } from "antd";
 import { QrCode, Filter, CheckCircle2, CreditCard, Banknote, Download, Plus, Zap, Landmark, CircleCheck, Copy, UserRound } from "lucide-react";
 import { api, type Booking, formatCurrency, formatSlotRange, Court } from "../../lib/api";
 import * as XLSX from 'xlsx';
 import { formatDateVi } from "../../lib/locale";
 import { createDemoBookings, demoCourts } from "../../data/demoData";
 import { Html5QrcodeScanner } from "html5-qrcode";
+import { AdminTableSkeleton } from "../../components/Skeletons";
+import { EmptyTableIllustration } from "../../components/EmptyState";
 
 export default function AdminBookings() {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -277,11 +279,7 @@ export default function AdminBookings() {
   ];
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center py-40">
-        <Spin size="large" />
-      </div>
-    );
+    return <div className="p-6" role="status" aria-label="Đang tải danh sách đơn"><AdminTableSkeleton /></div>;
   }
 
   const openScanner = () => {
@@ -414,6 +412,7 @@ export default function AdminBookings() {
           pagination={{ pageSize: 12, className: "mt-6", showSizeChanger: true }}
           scroll={{ x: 1000 }}
           className="modern-table"
+          locale={{ emptyText: <EmptyTableIllustration label={bookings.length ? "Không có đơn phù hợp với bộ lọc" : "Chưa có đơn đặt sân nào trong hệ thống"} /> }}
           components={{
             header: { cell: (props: any) => <th {...props} className="bg-gray-50/50 text-gray-500 font-bold border-b border-gray-100 py-4 uppercase text-xs tracking-wider" /> }
           }}

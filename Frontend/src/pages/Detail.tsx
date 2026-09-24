@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Heart, Share2, MapPin, Clock, Phone, LayoutGrid, CheckCircle2,
-  CalendarDays, Map, Loader2, ChevronRight, Star, Camera, MessageCircle, X,
+  CalendarDays, Map, ChevronRight, Star, Camera, MessageCircle, X,
 } from "lucide-react";
-import { api, Court, Field, formatCurrency, TIME_SLOTS, getBookingsByDate, Booking } from "../lib/api";
+import { api, Booking, Court, Field, formatCurrency, Review, TIME_SLOTS, getBookingsByDate } from "../lib/api";
 import { getDemoCourts, getDemoField, getFieldGallery, getFieldReviews } from "../data/demoData";
 import toast from "react-hot-toast";
+import { DetailSkeleton } from "../components/Skeletons";
+import { useFavorites } from "../hooks/useFavorites";
 
 export default function Detail() {
   const { id } = useParams();
@@ -20,8 +22,14 @@ export default function Detail() {
   );
   const preferredTime = searchParams.get("time");
   const [bookedByCourt, setBookedByCourt] = useState<Record<number, Booking[]>>({});
-  const [savedHeart, setSavedHeart] = useState(false);
   const [selectedGalleryImage, setSelectedGalleryImage] = useState<string | null>(null);
+  const [liveReviews, setLiveReviews] = useState<Review[]>([]);
+  const [reviewsLoaded, setReviewsLoaded] = useState(false);
+  const [reviewEligibility, setReviewEligibility] = useState<{ eligible: boolean; reason: string | null; bookingId: number | null }>({ eligible: false, reason: null, bookingId: null });
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const { isFavorite, toggleFavorite } = useFavorites();
 
   useEffect(() => {
     if (!id) return;
@@ -48,6 +56,12 @@ export default function Detail() {
       }
     })();
   }, [id]);
+
+  useEffect(() => {
+    if (!field) return;
+    api.get<Review[]>("/reviews", { params: { fieldId: field.id } }).then((response) => { setLiveReviews(response.data); setReviewsLoaded(true); }).catch(() => { setLiveReviews([]); setReviewsLoaded(false); });
+    api.get<{ eligible: boolean; reason: string | null; bookingId: number | null }>("/reviews/eligibility", { params: { fieldId: field.id } }).then((response) => setReviewEligibility(response.data)).catch(() => setReviewEligibility({ eligible: false, reason: "login_required", bookingId: null }));
+  }, [field]);
 
   const refreshAvailability = useCallback(async (force = false) => {
     if (!courts.length || !selectedDate) return;
@@ -96,12 +110,7 @@ export default function Detail() {
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-36 gap-3 bg-[#f7f8f6] min-h-screen">
-        <Loader2 className="w-10 h-10 animate-spin text-amber-500" />
-        <p className="text-slate-500 text-sm font-medium">Đang tải thông tin cơ sở...</p>
-      </div>
-    );
+    return <div role="status" aria-label="Đang tải thông tin cơ sở"><DetailSkeleton /></div>;
   }
 
   if (!field) {
@@ -118,16 +127,29 @@ export default function Detail() {
 
   const activeCourts = courts.filter((c) => c.status === "active");
   const gallery = getFieldGallery(field);
-  const reviews = getFieldReviews(field.id);
-  const averageRating = field.rating || 4.8;
-  const reviewCount = 126 + (field.id % 35);
+  const reviews = reviewsLoaded
+    ? liveReviews.map((review) => ({ id: review.id, author: review.userName, initial: review.userName?.charAt(0)?.toUpperCase() || "N", rating: review.rating, date: new Date(review.createdAt).toLocaleDateString("vi-VN"), comment: review.comment }))
+    : getFieldReviews(field.id);
+  const averageRating = reviews.length ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : (field.rating || 0);
+  const reviewCount = reviews.length;
   const ratingBreakdown = [
-    { rating: 5, percent: 82 },
-    { rating: 4, percent: 14 },
-    { rating: 3, percent: 3 },
-    { rating: 2, percent: 1 },
-    { rating: 1, percent: 0 },
-  ];
+    5, 4, 3, 2, 1,
+  ].map((rating) => ({ rating, percent: reviewCount ? Math.round((reviews.filter((review) => review.rating === rating).length / reviewCount) * 100) : 0 }));
+
+  const submitReview = async () => {
+    if (!field) return;
+    try {
+      setReviewSubmitting(true);
+      const response = await api.post<Review>("/reviews", { fieldId: field.id, rating: reviewRating, comment: reviewComment });
+      setLiveReviews((current) => [response.data, ...current]);
+      setReviewComment("");
+      toast.success("Đã gửi đánh giá của bạn");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Không thể gửi đánh giá");
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
 
   return (
     <div className="bg-[#f7f8f6] text-slate-700 min-h-screen">
@@ -148,10 +170,11 @@ export default function Detail() {
         {/* Actions on image */}
         <div className="absolute top-6 right-4 md:right-8 flex gap-3">
           <button
-            onClick={() => setSavedHeart(!savedHeart)}
-            className={`p-3 rounded-full backdrop-blur-md transition-all border ${savedHeart ? "bg-red-500/20 text-red-500 border-red-500/30" : "bg-black/40 text-white hover:bg-black/60 border-white/10 hover:text-yellow-400"}`}
+            onClick={() => field && toggleFavorite(field.id)}
+            aria-label={isFavorite(field.id) ? "Bỏ yêu thích" : "Thêm vào yêu thích"}
+            className={`p-3 rounded-full backdrop-blur-md transition-all border ${isFavorite(field.id) ? "bg-red-500/20 text-red-500 border-red-500/30" : "bg-black/40 text-white hover:bg-black/60 border-white/10 hover:text-yellow-400"}`}
           >
-            <Heart className={`w-5 h-5 ${savedHeart ? "fill-red-500" : ""}`} />
+            <Heart className={`w-5 h-5 ${isFavorite(field.id) ? "fill-red-500" : ""}`} />
           </button>
           <button className="p-3 rounded-full bg-black/40 backdrop-blur-md text-white hover:bg-black/60 hover:text-yellow-400 transition-all border border-white/10">
             <Share2 className="w-5 h-5" />
@@ -354,7 +377,7 @@ export default function Detail() {
                   <MessageCircle className="w-6 h-6 text-amber-500" />
                   Đánh giá từ người chơi
                 </h3>
-                <span className="text-xs text-slate-500 font-medium">Dữ liệu minh hoạ cho bản demo</span>
+                <span className="text-xs text-slate-500 font-medium">{reviewCount} lượt đánh giá</span>
               </div>
               <div className="grid md:grid-cols-[180px_1fr] gap-7 pb-8 mb-8 border-b border-slate-100">
                 <div className="rounded-2xl bg-amber-50 border border-amber-100 p-5 text-center">
@@ -374,6 +397,15 @@ export default function Detail() {
                   ))}
                 </div>
               </div>
+              {reviewEligibility.eligible && <div className="mb-8 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                <h4 className="font-extrabold text-slate-950">Chia sẻ trải nghiệm của bạn</h4>
+                <div className="mt-3 flex items-center gap-1" aria-label="Chọn số sao">
+                  {Array.from({ length: 5 }, (_, index) => <button key={index} type="button" onClick={() => setReviewRating(index + 1)} aria-label={`${index + 1} sao`}><Star className={`h-6 w-6 ${index < reviewRating ? "fill-amber-500 text-amber-500" : "text-slate-300"}`} /></button>)}
+                </div>
+                <textarea value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} maxLength={2000} placeholder="Bạn thấy sân hôm nay thế nào?" className="mt-3 min-h-24 w-full rounded-xl border border-amber-200 bg-white p-3 text-sm outline-none focus:border-amber-400" />
+                <button type="button" disabled={reviewSubmitting} onClick={submitReview} className="mt-3 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60">{reviewSubmitting ? "Đang gửi..." : "Gửi đánh giá"}</button>
+              </div>}
+              {!reviewEligibility.eligible && reviewEligibility.reason === "completed_booking_required" && <p className="mb-8 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500">Bạn chỉ có thể đánh giá sau khi hoàn thành hoặc check-in một đơn đặt sân tại đây.</p>}
               <div className="space-y-5">
                 {reviews.map((review) => (
                   <article key={review.id} className="flex gap-3 sm:gap-4">
