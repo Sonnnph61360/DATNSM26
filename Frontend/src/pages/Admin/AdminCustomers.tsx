@@ -156,11 +156,11 @@ export default function AdminCustomers() {
                     <p className="text-gray-500 mt-2 font-medium">Lưu trữ hành vi, định danh khách hàng thân thiết</p>
                 </div>
                 <div className="flex gap-4">
-                    <Card className="shadow-sm border-gray-100 bg-blue-50/50 rounded-2xl p-0" bodyStyle={{ padding: '8px 16px' }}>
+                    <Card className="shadow-sm border-gray-100 bg-blue-50/50 rounded-2xl p-0" styles={{ body: { padding: '8px 16px' } }}>
                         <div className="text-xs text-blue-600 font-bold uppercase mb-0.5">Tổng KH</div>
                         <div className="text-2xl font-black text-blue-700 leading-none">{customers.length}</div>
                     </Card>
-                    <Card className="shadow-sm border-gray-100 bg-amber-50/50 rounded-2xl p-0" bodyStyle={{ padding: '8px 16px' }}>
+                    <Card className="shadow-sm border-gray-100 bg-amber-50/50 rounded-2xl p-0" styles={{ body: { padding: '8px 16px' } }}>
                         <div className="text-xs text-amber-600 font-bold uppercase mb-0.5">Khách VIP</div>
                         <div className="text-2xl font-black text-amber-700 leading-none">{customers.filter(c => c.isVip).length}</div>
                     </Card>

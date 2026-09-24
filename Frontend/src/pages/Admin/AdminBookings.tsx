@@ -424,7 +424,7 @@ export default function AdminBookings() {
         onCancel={() => setRefundModalBooking(null)}
         footer={null}
         width={560}
-        destroyOnClose
+        destroyOnHidden
         className="rounded-2xl overflow-hidden"
         title={null}
       >
@@ -469,7 +469,7 @@ export default function AdminBookings() {
         open={isScannerOpen}
         onCancel={closeScanner}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
         className="rounded-2xl overflow-hidden"
       >
         <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 mb-4 text-center text-sm font-medium text-gray-600">

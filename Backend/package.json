@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "src/app.js",
   "scripts": {
-    "dev": "nodemon --exec babel-node src/bootstrap.js",
-    "start": "babel-node src/bootstrap.js",
+    "dev": "nodemon --exec \"babel-node --require ./src/polyfills/node-compat.cjs\" src/bootstrap.js",
+    "start": "babel-node --require ./src/polyfills/node-compat.cjs src/bootstrap.js",
     "seed": "babel-node src/seed.js"
   },
   "keywords": [],
