@@ -3,9 +3,14 @@
   "version": "1.0.0",
   "main": "src/app.js",
   "scripts": {
-    "dev": "nodemon --exec \"babel-node --require ./src/polyfills/node-compat.cjs\" src/bootstrap.js",
-    "start": "babel-node --require ./src/polyfills/node-compat.cjs src/bootstrap.js",
-    "seed": "babel-node src/seed.js"
+    "dev": "nodemon --exec babel-node src/bootstrap.js",
+    "start": "babel-node src/bootstrap.js",
+    "seed": "babel-node src/seed.js",
+    "test:rbac": "babel-node src/tests/rbac.test.js",
+    "test:payment": "babel-node src/tests/payment-flow.test.js",
+    "test:venues": "babel-node src/tests/venue-management.test.js",
+    "db:export": "babel-node src/scripts/dbSnapshot.js export",
+    "db:reset": "babel-node src/scripts/dbSnapshot.js reset"
   },
   "keywords": [],
   "author": "",
@@ -16,15 +21,13 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.1.0",
-    "google-auth-library": "^10.9.1",
     "joi": "^18.0.1",
     "jsonwebtoken": "^9.0.2",
     "moment": "^2.31.0",
     "mongodb-memory-server": "^11.2.0",
     "mongoose": "^8.24.2",
     "morgan": "^1.10.1",
-    "nodemailer": "^10.0.8",
-    "socket.io": "^4.8.3"
+    "nodemailer": "^10.0.8"
   },
   "devDependencies": {
     "@babel/core": "^7.28.4",

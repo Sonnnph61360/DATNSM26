@@ -1,194 +1,76 @@
 import { useEffect, useState } from "react";
-import { Table, Spin, Input, Card, Tag, Avatar } from "antd";
-import { Search, UserCircle, Star, Phone, Mail, Award, Clock } from "lucide-react";
-import { api, Booking, formatCurrency } from "../../lib/api";
+import { Button, Form, Input, Modal, Popconfirm, Table, Tooltip, message } from "antd";
+import { Edit, Mail, Phone, Plus, Search, Trash2, UserRound, Users } from "lucide-react";
+import { api } from "../../lib/api";
 
-interface CustomerStats {
-    phone: string;
-    fullName: string;
-    email: string;
-    totalSpent: number;
-    totalBookings: number;
-    lastBookingTime: string;
-    isVip: boolean;
-}
+type Customer = { id: number; fullName: string; phone: string; email: string; note?: string; createdAt?: string };
+type ApiError = { response?: { data?: { message?: string } } };
 
 export default function AdminCustomers() {
-    const [customers, setCustomers] = useState<CustomerStats[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [searchText, setSearchText] = useState("");
-
-    useEffect(() => {
-        const fetchCustomers = async () => {
-            try {
-                const res = await api.get<Booking[]>("/bookings");
-                const bookings = res.data.filter(b => b.status !== "cancelled");
-
-                const customerMap = new Map<string, CustomerStats>();
-
-                for (const b of bookings) {
-                    if (!b.customer || !b.customer.phone) continue;
-
-                    const phone = b.customer.phone;
-                    if (!customerMap.has(phone)) {
-                        customerMap.set(phone, {
-                            phone,
-                            fullName: b.customer.fullName || "Khách Hàng",
-                            email: b.customer.email || "",
-                            totalSpent: 0,
-                            totalBookings: 0,
-                            lastBookingTime: b.createdAt || b.date,
-                            isVip: false
-                        });
-                    }
-
-                    const c = customerMap.get(phone)!;
-                    c.totalBookings += 1;
-                    if (b.paymentStatus === 'paid' || b.status === 'confirmed' || b.status === "completed") {
-                        c.totalSpent += (b.total || 0);
-                    }
-                    if (new Date(b.createdAt || b.date) > new Date(c.lastBookingTime)) {
-                        c.lastBookingTime = b.createdAt || b.date;
-                    }
-                }
-
-                const sortedCustomers = Array.from(customerMap.values()).map(c => ({
-                    ...c,
-                    isVip: c.totalSpent > 3000000 || c.totalBookings >= 5 // VIP logic
-                })).sort((a, b) => b.totalSpent - a.totalSpent);
-
-                setCustomers(sortedCustomers);
-            } catch (error) {
-                console.error("Lỗi khi lấy khách hàng", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchCustomers();
-    }, []);
-
-    const filteredData = customers.filter(c =>
-        c.phone.includes(searchText) ||
-        c.fullName.toLowerCase().includes(searchText.toLowerCase()) ||
-        c.email.toLowerCase().includes(searchText.toLowerCase())
-    );
-
-    const columns = [
-        {
-            title: "Khách hàng",
-            key: "customer",
-            render: (_: unknown, record: CustomerStats) => (
-                <div className="flex items-center gap-4">
-                    <Avatar
-                        size={48}
-                        className={record.isVip ? "bg-gradient-to-r from-amber-400 to-orange-500 shadow-md shadow-orange-500/30" : "bg-blue-100 text-blue-600"}
-                        icon={!record.isVip && <UserCircle size={28} />}
-                    >
-                        {record.isVip && <Star size={24} color="white" fill="white" />}
-                    </Avatar>
-                    <div>
-                        <div className="font-bold text-gray-800 text-base">{record.fullName}</div>
-                        {record.isVip && <Tag color="gold" className="mt-1 border-none font-bold text-xs"><Award size={12} className="inline mr-1 mb-0.5" /> KHÁCH VIP</Tag>}
-                    </div>
-                </div>
-            )
-        },
-        {
-            title: "Liên hệ",
-            key: "contact",
-            render: (_: unknown, record: CustomerStats) => (
-                <div className="space-y-1">
-                    <div className="flex items-center text-sm text-gray-600 font-medium">
-                        <Phone size={14} className="mr-2 text-gray-400" /> {record.phone}
-                    </div>
-                    {record.email && (
-                        <div className="flex items-center text-sm text-gray-600">
-                            <Mail size={14} className="mr-2 text-gray-400" /> {record.email}
-                        </div>
-                    )}
-                </div>
-            )
-        },
-        {
-            title: "Tổng chi tiêu",
-            dataIndex: "totalSpent",
-            key: "totalSpent",
-            sorter: (a: CustomerStats, b: CustomerStats) => a.totalSpent - b.totalSpent,
-            render: (val: number, record: CustomerStats) => (
-                <div className={`font-black text-lg ${record.totalSpent > 0 ? "text-emerald-600" : "text-gray-400"}`}>
-                    {formatCurrency(val)}
-                </div>
-            )
-        },
-        {
-            title: "Số lần đặt sân",
-            dataIndex: "totalBookings",
-            key: "bookings",
-            sorter: (a: CustomerStats, b: CustomerStats) => a.totalBookings - b.totalBookings,
-            render: (val: number) => (
-                <span className="font-semibold text-gray-700 bg-gray-100 px-3 py-1 rounded-lg">{val} lượt</span>
-            )
-        },
-        {
-            title: "Hoạt động gần nhất",
-            dataIndex: "lastBookingTime",
-            render: (val: string) => (
-                <div className="flex items-center text-sm text-gray-500 font-medium">
-                    <Clock size={14} className="mr-1.5 text-gray-400" />
-                    {new Date(val).toLocaleDateString('vi-VN')}
-                </div>
-            )
-        }
-    ];
-
-    if (loading) {
-        return <div className="flex justify-center items-center py-40"><Spin size="large" /></div>;
-    }
-
-    return (
-        <div className="animate-in fade-in duration-500 pb-10">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-                <div>
-                    <h1 className="text-3xl font-black bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent tracking-tight flex items-center gap-2">
-                        Quản lý Khách Hàng (Mini CRM)
-                    </h1>
-                    <p className="text-gray-500 mt-2 font-medium">Lưu trữ hành vi, định danh khách hàng thân thiết</p>
-                </div>
-                <div className="flex gap-4">
-                    <Card className="shadow-sm border-gray-100 bg-blue-50/50 rounded-2xl p-0" styles={{ body: { padding: '8px 16px' } }}>
-                        <div className="text-xs text-blue-600 font-bold uppercase mb-0.5">Tổng KH</div>
-                        <div className="text-2xl font-black text-blue-700 leading-none">{customers.length}</div>
-                    </Card>
-                    <Card className="shadow-sm border-gray-100 bg-amber-50/50 rounded-2xl p-0" styles={{ body: { padding: '8px 16px' } }}>
-                        <div className="text-xs text-amber-600 font-bold uppercase mb-0.5">Khách VIP</div>
-                        <div className="text-2xl font-black text-amber-700 leading-none">{customers.filter(c => c.isVip).length}</div>
-                    </Card>
-                </div>
-            </div>
-
-            <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-6 overflow-hidden">
-                <div className="mb-6 max-w-md">
-                    <Input
-                        prefix={<Search size={18} className="text-gray-400 mr-2" />}
-                        placeholder="Tìm theo Tên, Số điện thoại hoặc Email..."
-                        size="large"
-                        onChange={(e) => setSearchText(e.target.value)}
-                        className="rounded-2xl border-gray-200 px-4 py-2 text-sm font-medium focus:ring-4 ring-emerald-500/10 transition-all border outline-none"
-                    />
-                </div>
-
-                <Table
-                    className="modern-table"
-                    dataSource={filteredData}
-                    columns={columns}
-                    rowKey="phone"
-                    pagination={{ pageSize: 10, className: "mt-8" }}
-                    components={{
-                        header: { cell: (props: any) => <th {...props} className="bg-gray-50/50 text-gray-500 font-bold border-b border-gray-100 py-4 uppercase text-xs tracking-wider" /> }
-                    }}
-                />
-            </div>
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [editing, setEditing] = useState<Customer | null>(null);
+  const [open, setOpen] = useState(false);
+  const [form] = Form.useForm<Customer>();
+  const load = async () => { try { setCustomers((await api.get<Customer[]>("/customers")).data); } catch (e: unknown) { message.error((e as ApiError).response?.data?.message || "Không thể tải khách hàng"); } finally { setLoading(false); } };
+  useEffect(() => { load(); }, []);
+  const openForm = (customer?: Customer) => { setEditing(customer || null); form.setFieldsValue(customer || { fullName: "", phone: "", email: "", note: "" }); setOpen(true); };
+  const save = async (values: Customer) => {
+    try {
+      if (editing) await api.put(`/customers/${editing.id}`, values); else await api.post("/customers", values);
+      message.success(editing ? "Đã cập nhật khách hàng" : "Đã thêm khách hàng"); setOpen(false); form.resetFields(); load();
+    } catch (e: unknown) { message.error((e as ApiError).response?.data?.message || "Không thể lưu khách hàng"); }
+  };
+  const remove = async (id: number) => { try { await api.delete(`/customers/${id}`); message.success("Đã xóa khách hàng"); load(); } catch (e: unknown) { message.error((e as ApiError).response?.data?.message || "Không thể xóa khách hàng"); } };
+  const filtered = customers.filter((item) => `${item.fullName} ${item.phone} ${item.email}`.toLowerCase().includes(query.toLowerCase()));
+  const withEmail = customers.filter((item) => item.email).length;
+  const columns = [
+    {
+      title: "Khách hàng", dataIndex: "fullName", width: 240,
+      render: (value: string) => (
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-50 text-sm font-extrabold text-brand-700 ring-1 ring-brand-100">{(value || "?").trim().charAt(0).toUpperCase()}</span>
+          <span className="truncate font-bold text-stone-900" title={value}>{value}</span>
         </div>
-    )
+      ),
+    },
+    { title: "Liên hệ", width: 260, render: (_: unknown, item: Customer) => <div className="space-y-1 text-sm text-stone-600"><div className="flex items-center gap-2 tabular-nums"><Phone size={14} className="shrink-0 text-stone-400" aria-hidden="true" />{item.phone}</div>{item.email && <div className="flex min-w-0 items-center gap-2"><Mail size={14} className="shrink-0 text-stone-400" aria-hidden="true" /><span className="truncate">{item.email}</span></div>}</div> },
+    { title: "Ghi chú", dataIndex: "note", ellipsis: true, render: (value: string) => value ? <span className="text-sm text-stone-600">{value}</span> : <span className="text-stone-400">—</span> },
+    {
+      title: "Thao tác", align: "right" as const, width: 110,
+      render: (_: unknown, item: Customer) => (
+        <div className="flex justify-end gap-1">
+          <Tooltip title="Sửa"><Button aria-label={`Sửa ${item.fullName}`} type="text" icon={<Edit size={17} />} onClick={() => openForm(item)} /></Tooltip>
+          <Popconfirm title="Xóa khách hàng này?" onConfirm={() => remove(item.id)} okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }}>
+            <Tooltip title="Xóa"><Button aria-label={`Xóa ${item.fullName}`} danger type="text" icon={<Trash2 size={17} />} /></Tooltip>
+          </Popconfirm>
+        </div>
+      ),
+    },
+  ];
+  return <div className="space-y-6 pb-10">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p className="m-0 text-sm text-stone-600">Lưu và chăm sóc thông tin khách hàng đặt sân (mini CRM).</p>
+      <Button type="primary" size="large" onClick={() => openForm()} icon={<Plus size={18} aria-hidden="true" />} className="self-start sm:self-auto">Thêm khách hàng</Button>
+    </div>
+
+    <div className="grid grid-cols-2 gap-3 sm:max-w-xl sm:gap-4">
+      {[{ label: "Tổng khách hàng", value: customers.length, icon: Users }, { label: "Có email liên hệ", value: withEmail, icon: Mail }].map((item) => { const Icon = item.icon; return (
+        <div key={item.label} className="card flex items-center justify-between gap-3 !rounded-2xl p-3.5 sm:!rounded-3xl sm:p-5">
+          <div><div className="text-2xl font-extrabold text-stone-950 tabular-nums">{item.value}</div><div className="mt-0.5 text-[11px] font-semibold leading-tight text-stone-500 sm:text-xs">{item.label}</div></div>
+          <span className="hidden h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600 ring-1 ring-brand-100 sm:grid"><Icon size={20} aria-hidden="true" /></span>
+        </div>); })}
+    </div>
+
+    <section className="card overflow-hidden" aria-label="Danh sách khách hàng">
+      <div className="flex flex-col gap-3 border-b border-stone-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <h2 className="m-0 text-base font-extrabold text-stone-950">Danh sách khách hàng <span className="ml-1 text-sm font-semibold text-stone-500">({filtered.length})</span></h2>
+        <Input aria-label="Tìm khách hàng" prefix={<Search size={16} className="text-stone-400" aria-hidden="true" />} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tìm tên, số điện thoại hoặc email" allowClear className="sm:!w-80" />
+      </div>
+      <Table loading={loading} dataSource={filtered} columns={columns} rowKey="id" className="modern-table" scroll={{ x: 760 }} pagination={{ pageSize: 10, hideOnSinglePage: true, className: "!px-5 sm:!px-6" }} locale={{ emptyText: <div className="py-12 text-center"><span className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-stone-100 text-stone-400"><UserRound size={22} aria-hidden="true" /></span><div className="font-semibold text-stone-700">Chưa có khách hàng</div><div className="mt-1 text-sm text-stone-500">Thêm khách hàng đầu tiên để bắt đầu chăm sóc.</div></div> }} />
+    </section>
+
+    <Modal title={editing ? "Cập nhật khách hàng" : "Thêm khách hàng"} open={open} onCancel={() => setOpen(false)} footer={null}><Form form={form} layout="vertical" onFinish={save} className="mt-4" requiredMark={false}><Form.Item name="fullName" label="Họ tên" rules={[{ required: true, message: "Vui lòng nhập họ tên" }]}><Input size="large" /></Form.Item><Form.Item name="phone" label="Số điện thoại" rules={[{ required: true, message: "Vui lòng nhập số điện thoại" }]}><Input size="large" inputMode="tel" /></Form.Item><Form.Item name="email" label="Email" rules={[{ type: "email", message: "Email không hợp lệ" }]}><Input size="large" inputMode="email" /></Form.Item><Form.Item name="note" label="Ghi chú"><Input.TextArea rows={3} /></Form.Item><Button htmlType="submit" type="primary" size="large" block>{editing ? "Lưu thay đổi" : "Thêm khách hàng"}</Button></Form></Modal>
+  </div>;
 }

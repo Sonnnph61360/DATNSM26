@@ -1,7 +1,6 @@
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
-import { OAuth2Client } from "google-auth-library";
 import User from "../models/User";
 import { nextId } from "../utils/ids";
 import { serialize } from "../utils/serialize";
@@ -17,48 +16,6 @@ function signToken(user) {
     process.env.JWT_SECRET || "datn_sm26_jwt_secret_change_me",
     { expiresIn: process.env.JWT_EXPIRES || "7d" }
   );
-}
-
-const googleClient = new OAuth2Client();
-
-/** POST /auth/google — verify a Google Identity Services credential */
-export async function googleLogin(req, res) {
-  try {
-    const { credential } = req.body;
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    if (!credential || !clientId) {
-      return res.status(400).json({ message: "Thiếu thông tin đăng nhập Google" });
-    }
-
-    const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: clientId });
-    const payload = ticket.getPayload();
-    if (!payload?.sub || !payload.email || payload.email_verified !== true) {
-      return res.status(401).json({ message: "Tài khoản Google chưa được xác thực" });
-    }
-
-    const email = payload.email.toLowerCase();
-    let user = await User.findOne({ email });
-    if (!user) {
-      user = await User.create({
-        id: await nextId("users"),
-        email,
-        password: await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10),
-        googleId: payload.sub,
-        fullName: payload.name || "",
-        avatar: payload.picture || "",
-        role: "user",
-      });
-    } else {
-      if (!user.googleId) user.googleId = payload.sub;
-      if (!user.avatar && payload.picture) user.avatar = payload.picture;
-      if (!user.fullName && payload.name) user.fullName = payload.name;
-      await user.save();
-    }
-
-    return res.json({ accessToken: signToken(user), user: serialize(user) });
-  } catch (e) {
-    return res.status(401).json({ message: "Đăng nhập Google không hợp lệ" });
-  }
 }
 
 /** POST /register — giống json-server-auth */
@@ -102,6 +59,7 @@ export async function login(req, res) {
     if (!user) {
       return res.status(400).json({ message: "Cannot find user" });
     }
+    if (!user.isActive) return res.status(403).json({ message: "Tài khoản đã bị khóa" });
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) {
       return res.status(400).json({ message: "Incorrect password" });
@@ -174,6 +132,85 @@ export async function listUsers(req, res) {
   } catch (e) {
     return res.status(500).json({ message: e.message });
   }
+}
+
+/** POST /users — admin tạo tài khoản nội bộ với role rõ ràng. */
+export async function createUser(req, res) {
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+    const role = String(req.body.role || "user");
+    if (!email || password.length < 6) {
+      return res.status(400).json({ message: "Email và mật khẩu tối thiểu 6 ký tự là bắt buộc" });
+    }
+    if (!["admin", "manager", "user"].includes(role)) {
+      return res.status(400).json({ message: "Vai trò không hợp lệ" });
+    }
+    if (await User.exists({ email })) {
+      return res.status(409).json({ message: "Email already exists" });
+    }
+    const id = await nextId("users");
+    const user = await User.create({
+      id,
+      email,
+      password: await bcrypt.hash(password, 10),
+      fullName: String(req.body.fullName || "").trim(),
+      phone: String(req.body.phone || "").trim(),
+      role,
+    });
+    return res.status(201).json(serialize(user));
+  } catch (e) {
+    return res.status(400).json({ message: e.message });
+  }
+}
+
+/** PATCH /users/:id/role — chỉ admin được phân quyền. */
+export async function updateUserRole(req, res) {
+  try {
+    const id = Number(req.params.id);
+    const role = String(req.body.role || "");
+    if (!["admin", "manager", "user"].includes(role)) {
+      return res.status(400).json({ message: "Vai trò không hợp lệ" });
+    }
+    if (Number(req.user?.id) === id && role !== "admin") {
+      return res.status(400).json({ message: "Không thể tự gỡ quyền admin của chính mình" });
+    }
+    const user = await User.findOneAndUpdate({ id }, { $set: { role } }, { new: true, runValidators: true });
+    if (!user) return res.status(404).json({ message: "Không tìm thấy tài khoản" });
+    return res.json(serialize(user));
+  } catch (e) {
+    return res.status(400).json({ message: e.message });
+  }
+}
+
+/** PATCH /users/:id/admin — admin cập nhật thông tin nhân sự. */
+export async function updateUserByAdmin(req, res) {
+  try {
+    const id = Number(req.params.id);
+    const user = await User.findOne({ id });
+    if (!user) return res.status(404).json({ message: "Không tìm thấy tài khoản" });
+    const fullName = String(req.body.fullName ?? user.fullName).trim();
+    const email = String(req.body.email ?? user.email).trim().toLowerCase();
+    const role = String(req.body.role ?? user.role);
+    if (!email) return res.status(400).json({ message: "Email là bắt buộc" });
+    if (!["admin", "manager", "user"].includes(role)) return res.status(400).json({ message: "Vai trò không hợp lệ" });
+    if (await User.exists({ email, id: { $ne: id } })) return res.status(409).json({ message: "Email already exists" });
+    if (Number(req.user?.id) === id && role !== "admin") return res.status(400).json({ message: "Không thể tự gỡ quyền admin của chính mình" });
+    user.fullName = fullName; user.email = email; user.phone = String(req.body.phone ?? user.phone).trim(); user.role = role;
+    await user.save();
+    return res.json(serialize(user));
+  } catch (e) { return res.status(400).json({ message: e.message }); }
+}
+
+/** PATCH /users/:id/status — khóa/mở khóa tài khoản, vẫn giữ lịch sử dữ liệu. */
+export async function updateUserStatus(req, res) {
+  try {
+    const id = Number(req.params.id);
+    if (Number(req.user?.id) === id && req.body.isActive === false) return res.status(400).json({ message: "Không thể tự khóa tài khoản của mình" });
+    const user = await User.findOneAndUpdate({ id }, { $set: { isActive: Boolean(req.body.isActive) } }, { new: true, runValidators: true });
+    if (!user) return res.status(404).json({ message: "Không tìm thấy tài khoản" });
+    return res.json(serialize(user));
+  } catch (e) { return res.status(400).json({ message: e.message }); }
 }
 
 /** PATCH /users/:id — user tự cập nhật thông tin cơ bản */

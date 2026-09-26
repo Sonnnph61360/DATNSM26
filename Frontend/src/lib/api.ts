@@ -1,6 +1,7 @@
 import axios from "axios";
 import { cachedGet, invalidateApiCache } from "./apiCache";
-import { demoCourts, demoFields } from "../data/demoData";
+import { clearAuth } from "./auth";
+import toast from "react-hot-toast";
 
 // src/lib/api.ts
 // Dùng API cùng origin. Trong dev, Vite proxy chuyển /api về backend duy nhất;
@@ -13,6 +14,8 @@ export const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+let redirectingAfterUnauthorized = false;
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
@@ -21,7 +24,23 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-export function formatCurrency(value: number | null | undefined) {
+api.interceptors.response.use(
+  (response) => response,
+  (error: unknown) => {
+    if (axios.isAxiosError(error) && error.response?.status === 401 && error.response.data?.message === "Invalid token") {
+      const returnTo = window.location.pathname + window.location.search;
+      clearAuth();
+      if (!redirectingAfterUnauthorized && window.location.pathname !== "/login") {
+        redirectingAfterUnauthorized = true;
+        toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+        window.location.replace(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+export function formatCurrency(value: number) {
   if (value == null || Number.isNaN(Number(value))) return "0 ₫";
   return (
     Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 0 }) + " ₫"
@@ -67,29 +86,26 @@ export type Court = {
   price: number;
   status: string;
   capacity: number;
+  description?: string;
+  imageUrl?: string;
 };
 
-export type Review = {
-  id: number;
-  fieldId: number;
-  bookingId: number;
-  userId: number;
-  userName: string;
-  rating: number;
-  comment: string;
-  status: "visible" | "hidden";
-  createdAt: string;
-};
-
-export type NotificationItem = {
-  id: number;
-  bookingId: number;
-  type: string;
+export type NewsItem = {
+  id: string;
   title: string;
-  message: string;
-  readAt?: string | null;
-  createdAt: string;
+  category: string;
+  desc: string;
+  date: string;
+  image: string;
+  sourceUrl: string;
+  source: "VBA";
 };
+
+/** Tin tức VBA được backend tải và chuẩn hoá để tránh lỗi CORS ở trình duyệt. */
+export async function fetchVbaNews(limit = 18) {
+  const response = await api.get<{ items: NewsItem[]; source: string }>("/news", { params: { limit } });
+  return response.data.items;
+}
 
 const basketballLabels = new Set(["basketball", "bóng rổ", "sân bóng rổ"]);
 
@@ -104,6 +120,13 @@ export type Booking = {
   id: number;
   fieldId: number;
   courtId: number;
+  bookingGroupId?: string;
+  bookingMode?: "single" | "recurring" | "full_field";
+  reservedCourtIds?: number[];
+  groupTotal?: number;
+  groupPaidAmount?: number;
+  groupSize?: number;
+  isGroupPrimary?: boolean;
   fieldName: string;
   court: string;
   date: string;
@@ -117,17 +140,40 @@ export type Booking = {
     userId?: number;
     email?: string;
   };
+  services?: Array<{ name: string; quantity: number; price: number }>;
+  voucherCode?: string;
+  discount?: number;
   paymentMethod: string;
   paymentStatus: string;
+  pendingAdjustmentId?: string;
   paidAmount?: number;
   paymentExpiresAt?: string | null;
   refundAmount?: number;
+  refundRate?: number;
   refundStatus?: "none" | "pending" | "completed";
   refundStk?: string;
   refundBank?: string;
+  refundReason?: string;
+  refundTransactionCode?: string;
+  refundPaymentCode?: string;
+  refundGateway?: string;
+  refundBankCode?: string;
+  refundPayments?: Array<{
+    paymentCode: string;
+    bookingGroupId?: string;
+    transactionCode?: string;
+    gateway: string;
+    bankCode?: string;
+    amount: number;
+    paymentKind: string;
+    paidAt?: string | null;
+  }>;
+  cancelledBookingIds?: number[];
   cancellationReason?: string;
+  cancelledByRole?: string;
   status: string;
   createdAt: string;
+  cancelledAt?: string | null;
 };
 
 /** Check if two time ranges overlap (time as HH:mm, duration in hours) */
@@ -151,7 +197,7 @@ export function isSlotConflict(
 export async function getBookedSlots(courtId: number, date: string, force = false) {
   // Dùng 1 request theo ngày (cache) rồi lọc court — tránh N request cho N sân
   const list = await getBookingsByDate(date, force);
-  return list.filter((b) => b.courtId === courtId && b.status !== "cancelled");
+  return list.filter((b) => (b.courtId === courtId || b.reservedCourtIds?.includes(courtId)) && b.status !== "cancelled");
 }
 
 /** Lấy bookings theo ngày — cache 15s, gộp request trùng */
@@ -161,7 +207,7 @@ export async function getBookingsByDate(date: string, force = false) {
   return cachedGet(
     key,
     async () => {
-      const res = await api.get<Booking[]>("/bookings", { params: { date } });
+      const res = await api.get<Booking[]>("/bookings/availability", { params: { date } });
       return res.data;
     },
     15_000
@@ -175,11 +221,9 @@ export async function fetchFields(force = false) {
     async () => {
       try {
         const res = await api.get<Field[]>("/fields");
-        const basketballFields = res.data.filter(isBasketballField);
-        if (!basketballFields.length) return demoFields;
-        return [...basketballFields, ...demoFields.filter((demo) => !basketballFields.some((field) => field.id === demo.id))];
+        return res.data.filter(isBasketballField);
       } catch {
-        return demoFields;
+        return [];
       }
     },
     30_000
@@ -192,12 +236,11 @@ export async function fetchCourts(params?: { fieldId?: number | string; status?:
   return cachedGet(
     key,
     async () => {
-      const fallback = params?.fieldId == null ? demoCourts : demoCourts.filter((court) => court.fieldId === Number(params.fieldId));
       try {
         const res = await api.get<Court[]>("/courts", { params });
-        return res.data.length ? res.data : fallback;
+        return res.data;
       } catch {
-        return fallback;
+        return [];
       }
     },
     30_000

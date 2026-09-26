@@ -1,5 +1,4 @@
 import jwt from "jsonwebtoken";
-import User from "../models/User";
 
 export function authRequired(req, res, next) {
   const header = req.headers.authorization || "";
@@ -24,6 +23,18 @@ export function adminRequired(req, res, next) {
     return res.status(403).json({ message: "Admin only" });
   });
 }
+
+export function rolesRequired(...roles) {
+  return function roleMiddleware(req, res, next) {
+    authRequired(req, res, () => {
+      if (roles.includes(req.user?.role)) return next();
+      return res.status(403).json({ message: "Bạn không có quyền thực hiện thao tác này" });
+    });
+  };
+}
+
+export const staffRequired = rolesRequired("admin", "manager");
+export const managerRequired = rolesRequired("manager");
 
 export async function attachUser(req, res, next) {
   const header = req.headers.authorization || "";

@@ -2,10 +2,9 @@ import { Routes, Route } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
-import { useLocation } from "react-router-dom";
 import ClientLayout from "./layouts/ClientLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { useRevealOnScroll } from "./hooks/useRevealOnScroll";
 
 const Home = lazy(() => import("./pages/Home"));
 const Detail = lazy(() => import("./pages/Detail"));
@@ -25,7 +24,6 @@ const Contact = lazy(() => import("./pages/Contact"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const MyBookings = lazy(() => import("./pages/MyBookings"));
-const Favorites = lazy(() => import("./pages/Favorites"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Paygate = lazy(() => import("./pages/Paygate"));
 const VnPaySandbox = lazy(() => import("./pages/VnPaySandbox"));
@@ -34,42 +32,39 @@ const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
 const AdminBookings = lazy(() => import("./pages/Admin/AdminBookings"));
 const Dashboard = lazy(() => import("./pages/Admin/Dashboard"));
 const Courts = lazy(() => import("./pages/Admin/Courts"));
+const Facilities = lazy(() => import("./pages/Admin/Facilities"));
 const CalendarPage = lazy(() => import("./pages/Admin/CalendarPage"));
 const AdminCustomers = lazy(() => import("./pages/Admin/AdminCustomers"));
 const AdminVouchers = lazy(() => import("./pages/Admin/AdminVouchers"));
 const AdminEmployees = lazy(() => import("./pages/Admin/AdminEmployees"));
-const AdminReviews = lazy(() => import("./pages/Admin/AdminReviews"));
 
 function RouteFallback() {
   return (
-    <div className="flex min-h-[65vh] flex-col items-center justify-center gap-3 bg-[#f7f8f6] text-slate-500" role="status" aria-live="polite">
-      <Loader2 className="h-9 w-9 animate-spin text-amber-500" />
+    <div className="flex min-h-[65vh] flex-col items-center justify-center gap-3 bg-surface text-stone-500" role="status" aria-live="polite">
+      <span className="grid h-14 w-14 place-items-center rounded-2xl bg-brand-50 ring-1 ring-brand-100">
+        <Loader2 className="h-7 w-7 animate-spin text-brand-500" aria-hidden="true" />
+      </span>
       <span className="text-sm font-semibold">Đang chuẩn bị trải nghiệm...</span>
     </div>
   );
 }
 
 function App() {
-  const location = useLocation();
-
+  useRevealOnScroll();
   return (
     <>
-      <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={location.pathname}
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -6 }}
-        transition={{ duration: 0.22, ease: "easeOut" }}
-      >
-        <Suspense fallback={<RouteFallback />}>
-        <Routes location={location}>
+      <Suspense fallback={<RouteFallback />}>
+      <Routes>
         <Route path="/*" element={<ClientLayout />}>
           <Route index element={<Home />} />
           <Route path="field/:id" element={<Detail />} />
           <Route path="detail/:id" element={<Detail />} />
           <Route path="detail" element={<Detail />} />
-          <Route path="booking" element={<Booking />} />
+          <Route path="booking" element={
+            <ProtectedRoute>
+              <Booking />
+            </ProtectedRoute>
+          } />
           <Route path="tim-san" element={<List />} />
           <Route path="fields" element={<FieldPage />} />
           <Route path="clubs" element={<CommunityHub mode="clubs" />} />
@@ -83,7 +78,11 @@ function App() {
           <Route path="contact" element={<Contact />} />
           <Route path="terms" element={<Terms />} />
           <Route path="privacy" element={<Privacy />} />
-          <Route path="paygate" element={<Paygate />} />
+          <Route path="paygate" element={
+            <ProtectedRoute>
+              <Paygate />
+            </ProtectedRoute>
+          } />
           <Route
             path="profile"
             element={
@@ -97,14 +96,6 @@ function App() {
             element={
               <ProtectedRoute>
                 <MyBookings />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="favorites"
-            element={
-              <ProtectedRoute>
-                <Favorites />
               </ProtectedRoute>
             }
           />
@@ -122,7 +113,7 @@ function App() {
         <Route
           path="/admin"
           element={
-            <ProtectedRoute adminOnly>
+            <ProtectedRoute allowedRoles={["admin", "manager"]}>
               <AdminLayout />
             </ProtectedRoute>
           }
@@ -131,21 +122,34 @@ function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="calendar" element={<CalendarPage />} />
           <Route path="bookings" element={<AdminBookings />} />
-          <Route path="courts" element={<Courts />} />
+          <Route path="courts" element={
+            <ProtectedRoute allowedRoles={["manager"]}>
+              <Courts />
+            </ProtectedRoute>
+          } />
+          <Route path="facilities" element={<ProtectedRoute allowedRoles={["manager"]}><Facilities /></ProtectedRoute>} />
           <Route path="customers" element={<AdminCustomers />} />
-          <Route path="vouchers" element={<AdminVouchers />} />
-          <Route path="employees" element={<AdminEmployees />} />
-          <Route path="reviews" element={<AdminReviews />} />
+          <Route path="vouchers" element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminVouchers />
+            </ProtectedRoute>
+          } />
+          <Route path="employees" element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminEmployees />
+            </ProtectedRoute>
+          } />
         </Route>
-        </Routes>
-        </Suspense>
-      </motion.div>
-      </AnimatePresence>
+      </Routes>
+      </Suspense>
       <Toaster
         position="top-right"
+        gutter={10}
         toastOptions={{
-          duration: 3000,
-          className: "app-toast",
+          duration: 3500,
+          style: { borderRadius: 14, padding: "12px 14px", fontWeight: 600, fontSize: 14, color: "#1c1917", border: "1px solid #e7e5e4", boxShadow: "0 16px 32px -12px rgba(28,25,23,.18)" },
+          success: { iconTheme: { primary: "#059669", secondary: "#fff" } },
+          error: { iconTheme: { primary: "#dc2626", secondary: "#fff" } },
         }}
       />
     </>

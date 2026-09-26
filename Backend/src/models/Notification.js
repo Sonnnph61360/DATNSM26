@@ -6,7 +6,7 @@ const notificationSchema = new mongoose.Schema(
     userId: { type: Number, index: true },
     email: { type: String, trim: true, lowercase: true, index: true },
     bookingId: { type: Number, required: true, index: true },
-    type: { type: String, enum: ["refund_completed", "booking_confirmed", "booking_reminder", "system"], required: true },
+    type: { type: String, enum: ["refund_completed"], required: true },
     title: { type: String, required: true },
     message: { type: String, required: true },
     readAt: { type: Date, default: null },

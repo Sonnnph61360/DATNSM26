@@ -1,11 +1,11 @@
 import express from "express";
 import crypto from "crypto";
 import Booking from "../models/Booking";
-import Notification from "../models/Notification";
-import { nextId } from "../utils/ids";
-import { emitNotification } from "../utils/notificationSocket";
 import Payment from "../models/Payment";
+import BookingAdjustment from "../models/BookingAdjustment";
 import { expirePendingPayments } from "../controllers/booking";
+import { authRequired } from "../middleware/auth";
+import { processVnpayCallback } from "../services/vnpayPayment";
 
 const router = express.Router();
 const moment = require('moment');
@@ -36,7 +36,7 @@ function sortObject(obj) {
     return sorted;
 }
 
-router.post('/create-url', async function (req, res, next) {
+router.post('/create-url', authRequired, async function (req, res, next) {
     try {
         await expirePendingPayments();
         const date = new Date();
@@ -53,30 +53,50 @@ router.post('/create-url', async function (req, res, next) {
 
         const orderId = String(req.body.orderId || "");
         const requestedAmount = Number(req.body.amount);
-        const paymentKind = ["deposit", "balance", "full"].includes(req.body.paymentKind)
+        const paymentKind = ["deposit", "balance", "full", "adjustment"].includes(req.body.paymentKind)
             ? req.body.paymentKind
             : "full";
         if (!/^\d+$/.test(orderId) || !Number.isInteger(requestedAmount) || requestedAmount <= 0) {
             return res.status(400).json({ message: "orderId hoặc amount không hợp lệ" });
         }
         const booking = await Booking.findOne({ id: Number(orderId) });
-        if (!booking) {
-            return res.status(404).json({ message: "Không tìm thấy đơn đặt sân" });
+        if (!booking) return res.status(404).json({ message: "Không tìm thấy đơn đặt sân" });
+        const staff = req.user?.role === "admin" || req.user?.role === "manager";
+        const owner = Number(booking.customer?.userId) === Number(req.user?.id);
+        if (!staff && !owner) return res.status(403).json({ message: "Bạn không có quyền thanh toán đơn này" });
+
+        let adjustment = null;
+        let expectedAmount = 0;
+        if (paymentKind === "adjustment") {
+            adjustment = await BookingAdjustment.findOne({
+                id: String(req.body.adjustmentId || ""), bookingId: booking.id, status: "pending_payment",
+            });
+            if (!adjustment || Number(adjustment.paymentDelta) <= 0) {
+                return res.status(409).json({ message: "Khoản phụ thu không tồn tại hoặc không còn hiệu lực" });
+            }
+            expectedAmount = Number(adjustment.paymentDelta);
+        } else {
+            const groupBookings = booking.bookingGroupId
+                ? await Booking.find({ bookingGroupId: booking.bookingGroupId, status: { $ne: "cancelled" } }).sort({ id: 1 })
+                : [booking];
+            if (!groupBookings.length) return res.status(400).json({ message: "Đơn đã hết hạn hoặc đã hủy" });
+            const groupTotal = groupBookings.reduce((sum, item) => sum + Number(item.total || 0), 0);
+            const paymentFilter = booking.bookingGroupId
+                ? { bookingGroupId: booking.bookingGroupId, status: "success", paymentKind: { $in: ["deposit", "balance", "full"] } }
+                : { bookingId: booking.id, status: "success", paymentKind: { $in: ["deposit", "balance", "full"] } };
+            const successfulPayments = await Payment.find(paymentFilter).select("amount");
+            const paidAmount = successfulPayments.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+            const groupPaymentStatus = groupBookings[0].paymentStatus;
+            if (groupBookings.some((item) => item.paymentStatus !== groupPaymentStatus)) {
+                return res.status(409).json({ message: "Trạng thái thanh toán của nhóm lịch không đồng nhất" });
+            }
+            expectedAmount = paymentKind === "deposit" ? Math.round(groupTotal * 0.3) : paymentKind === "balance" ? Math.max(0, groupTotal - paidAmount) : groupTotal;
+            if (paymentKind === "balance" && groupPaymentStatus !== "deposit_paid") return res.status(400).json({ message: "Chỉ có thể thanh toán phần còn lại cho đơn đã đặt cọc" });
+            if (paymentKind !== "balance" && groupPaymentStatus !== "unpaid") return res.status(400).json({ message: "Đơn đã có giao dịch thanh toán, vui lòng chỉ thanh toán số tiền còn lại" });
+            if (paymentKind === "deposit" && booking.paymentMethod !== "deposit") return res.status(400).json({ message: "Đơn này không sử dụng hình thức đặt cọc" });
         }
-        if (booking.status === "cancelled") {
-            return res.status(400).json({ message: "Đơn đã hết hạn hoặc đã hủy" });
-        }
-        const paidAmount = Number(booking.paidAmount) || (booking.paymentStatus === "deposit_paid" ? Math.round(Number(booking.total) * 0.3) : 0);
-        const expectedAmount = paymentKind === "deposit"
-            ? Math.round(Number(booking.total) * 0.3)
-            : paymentKind === "balance"
-                ? Math.max(0, Number(booking.total) - paidAmount)
-                : Number(booking.total);
         if (expectedAmount <= 0 || requestedAmount !== expectedAmount) {
             return res.status(400).json({ message: "Số tiền thanh toán không khớp với số tiền còn phải trả" });
-        }
-        if (paymentKind === "balance" && booking.paymentStatus !== "deposit_paid") {
-            return res.status(400).json({ message: "Chỉ có thể thanh toán phần còn lại cho đơn đã đặt cọc" });
         }
         const paymentCode = `${booking.id}_${paymentKind}_${Date.now()}`;
         const amount = expectedAmount;
@@ -100,6 +120,7 @@ router.post('/create-url', async function (req, res, next) {
         vnp_Params['vnp_ReturnUrl'] = returnUrl;
         vnp_Params['vnp_IpAddr'] = ipAddr;
         vnp_Params['vnp_CreateDate'] = createDate;
+        vnp_Params['vnp_ExpireDate'] = moment(booking.paymentExpiresAt || new Date(date.getTime() + 15 * 60 * 1000)).format('YYYYMMDDHHmmss');
         if (bankCode !== null && bankCode !== '' && bankCode !== undefined) {
             vnp_Params['vnp_BankCode'] = bankCode;
         }
@@ -115,11 +136,13 @@ router.post('/create-url', async function (req, res, next) {
             { paymentCode },
             {
                 bookingId: booking.id,
+                bookingGroupId: booking.bookingGroupId || "",
                 paymentCode,
                 transactionCode: "",
                 gateway: "vnpay",
                 amount,
                 paymentKind,
+                adjustmentId: adjustment?.id || "",
                 currency: "VND",
                 status: "pending",
                 rawData: vnp_Params,
@@ -136,80 +159,31 @@ router.post('/create-url', async function (req, res, next) {
 
 router.get("/return", async (req, res) => {
     try {
-        const secureHash = String(req.query.vnp_SecureHash || "");
-        const vnp_Params = { ...req.query };
-        delete vnp_Params.vnp_SecureHash;
-        delete vnp_Params.vnp_SecureHashType;
-
-        const signData = qs.stringify(sortObject(vnp_Params), { encode: false });
-        const signed = crypto.createHmac("sha512", process.env.VNP_HASH_SECRET || "")
-            .update(Buffer.from(signData, "utf-8"))
-            .digest("hex");
-        const validSignature = secureHash.length === signed.length &&
-            crypto.timingSafeEqual(Buffer.from(secureHash), Buffer.from(signed));
-
-        const paymentCode = String(vnp_Params.vnp_TxnRef || "");
-        const actualOrderId = paymentCode.split("_")[0];
-        const rspCode = String(vnp_Params.vnp_ResponseCode || "99");
-        if (!validSignature) {
-            return res.json({ message: "Invalid Signature", code: "97" });
-        }
-
-        const booking = await Booking.findOne({ id: Number(actualOrderId) });
-        if (!booking) {
-            return res.status(404).json({ message: "Không tìm thấy đơn đặt sân", code: "01" });
-        }
-
-        const payment = await Payment.findOne({ paymentCode });
-        if (!payment) return res.status(404).json({ message: "Không tìm thấy giao dịch", code: "01" });
-        const successful = rspCode === "00";
-        const wasConfirmed = booking.status === "confirmed";
-        const paidAmount = successful
-            ? Math.min(Number(booking.total), (Number(booking.paidAmount) || 0) + Number(payment.amount))
-            : Number(booking.paidAmount) || 0;
-        const fullyPaid = paidAmount >= Number(booking.total);
-        await Booking.updateOne(
-            { id: booking.id },
-            { $set: {
-                paidAmount,
-                paymentStatus: successful ? (fullyPaid ? "paid" : "deposit_paid") : booking.paymentStatus,
-                status: successful ? "confirmed" : booking.status,
-                paymentExpiresAt: successful ? null : booking.paymentExpiresAt,
-            } }
-        );
-        await Payment.findOneAndUpdate(
-            { paymentCode },
-            {
-                status: successful ? "success" : "failed",
-                transactionCode: String(vnp_Params.vnp_TransactionNo || ""),
-                bankCode: String(vnp_Params.vnp_BankCode || ""),
-                paidAt: successful ? new Date() : null,
-                rawData: vnp_Params,
-            },
-            { upsert: true, new: true }
-        );
-        if (successful && !wasConfirmed) {
-            const notification = await Notification.findOneAndUpdate(
-                { bookingId: booking.id, type: "booking_confirmed" },
-                {
-                    $setOnInsert: {
-                        id: await nextId("notifications"),
-                        userId: Number(booking.customer?.userId) || undefined,
-                        email: booking.customer?.email || undefined,
-                        bookingId: booking.id,
-                        type: "booking_confirmed",
-                        title: "Đặt sân đã được xác nhận",
-                        message: `Đơn BK${String(booking.id).padStart(6, "0")} tại ${booking.fieldName} đã được xác nhận.`,
-                    },
-                },
-                { upsert: true, new: true, setDefaultsOnInsert: true }
-            );
-            emitNotification(notification);
-        }
-        return res.json({ message: successful ? "Success" : "Failed", code: rspCode, bookingId: actualOrderId });
+        const result = await processVnpayCallback(req.query);
+        return res.status(result.code === "01" ? 404 : 200).json(result);
     } catch (error) {
         console.error("VNPAY Return Error:", error);
-        return res.status(500).json({ message: error.message || "Internal Server Error", code: "99" });
+        return res.status(500).json({ message: error.message || "Internal Server Error", code: "99", state: "error" });
+    }
+});
+
+router.get("/ipn", async (req, res) => {
+    try {
+        const result = await processVnpayCallback(req.query);
+        const merchantCode = ["success", "failed", "refund_pending", "refunded"].includes(result.state) ? "00" : result.code;
+        const messageByCode = {
+            "00": "Confirm Success",
+            "01": "Order not found",
+            "04": "Invalid amount",
+            "97": "Invalid signature",
+        };
+        return res.status(200).json({
+            RspCode: merchantCode,
+            Message: messageByCode[merchantCode] || result.message || "Unknown error",
+        });
+    } catch (error) {
+        console.error("VNPAY IPN Error:", error);
+        return res.status(200).json({ RspCode: "99", Message: "Internal error" });
     }
 });
 
