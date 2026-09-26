@@ -9,6 +9,7 @@ import {
 	updateUserStatus,
 	forgotPassword,
 	resetPassword,
+	googleLogin,
 } from "../controllers/auth";
 import { adminRequired, authRequired } from "../middleware/auth";
 import { updateProfile, changePassword } from "../controllers/auth";
@@ -25,5 +26,7 @@ router.patch("/users/:id/admin", adminRequired, updateUserByAdmin);
 router.patch("/users/:id/status", adminRequired, updateUserStatus);
 router.patch("/users/:id", authRequired, updateProfile);
 router.patch("/users/:id/password", authRequired, changePassword);
+router.post("/google", googleLogin);   // ← thêm dòng này
+
 
 export default router;

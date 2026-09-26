@@ -5,8 +5,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, LogIn, ShieldCheck, Timer, MapPin, type LucideIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import { api } from "../lib/api";
-import { setAuth } from "../lib/auth";
+import { setAuth, type AuthUser } from "../lib/auth";
 import BrandLogo from "../components/BrandLogo";
+import { GoogleLogin, type CredentialResponse } from "@react-oauth/google";
 
 type Highlight = { icon: LucideIcon; text: string };
 
@@ -133,6 +134,19 @@ const authSubmitClass = "btn-primary !h-12 !rounded-xl !border-none !text-base !
 function Login() {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  const completeLogin = (accessToken: string, user: AuthUser) => {
+    setAuth(accessToken, user);
+    toast.success("Đăng nhập thành công!");
+    const requestedReturnTo = new URLSearchParams(window.location.search).get("returnTo") || "/";
+    const returnTo = requestedReturnTo.startsWith("/") && !requestedReturnTo.startsWith("//")
+      ? requestedReturnTo
+      : "/";
+    const isStaffAccount = ["admin", "manager"].includes(user.role || "");
+    navigate(isStaffAccount && !returnTo.startsWith("/admin") ? "/admin" : returnTo, { replace: true });
+  };
 
   const onFinish = async (values: { email: string; password: string }) => {
     setSubmitting(true);
@@ -141,19 +155,28 @@ function Login() {
         email: values.email,
         password: values.password,
       });
-      setAuth(res.data.accessToken, res.data.user);
-      toast.success("Đăng nhập thành công!");
-      const requestedReturnTo = new URLSearchParams(window.location.search).get("returnTo") || "/";
-      const returnTo = requestedReturnTo.startsWith("/") && !requestedReturnTo.startsWith("//")
-        ? requestedReturnTo
-        : "/";
-      // Tài khoản quản trị vào thẳng trang admin; giữ nguyên nếu đang mở một trang admin cụ thể.
-      const isStaffAccount = ["admin", "manager"].includes(res.data.user?.role);
-      navigate(isStaffAccount && !returnTo.startsWith("/admin") ? "/admin" : returnTo, { replace: true });
+      completeLogin(res.data.accessToken, res.data.user);
     } catch {
       toast.error("Sai email hoặc mật khẩu!");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const onGoogleSuccess = async (response: CredentialResponse) => {
+    if (!response.credential) {
+      toast.error("Google không trả về thông tin xác thực.");
+      return;
+    }
+
+    setGoogleSubmitting(true);
+    try {
+      const res = await api.post("/google", { credential: response.credential });
+      completeLogin(res.data.accessToken, res.data.user);
+    } catch {
+      toast.error("Đăng nhập Google thất bại!");
+    } finally {
+      setGoogleSubmitting(false);
     }
   };
 
@@ -212,6 +235,28 @@ function Login() {
             {submitting ? "Đang đăng nhập…" : <span className="inline-flex items-center gap-2">Đăng nhập <ArrowRight className="h-4 w-4" aria-hidden="true" /></span>}
           </Button>
         </Form>
+
+        {googleClientId && (
+          <div className={`mt-6 ${googleSubmitting ? "pointer-events-none opacity-60" : ""}`} aria-busy={googleSubmitting}>
+            <div className="relative mb-6 flex items-center justify-center">
+              <span className="absolute inset-x-0 border-t border-stone-200" />
+              <span className="relative bg-white px-3 text-sm text-stone-500">Hoặc tiếp tục với</span>
+            </div>
+            <div className="flex justify-center">
+              <GoogleLogin
+                onSuccess={onGoogleSuccess}
+                onError={() => toast.error("Đăng nhập Google thất bại!")}
+                useOneTap={false}
+                theme="outline"
+                size="large"
+                width={240}
+                text="signin_with"
+                shape="rectangular"
+                logo_alignment="left"
+              />
+            </div>
+          </div>
+        )}
 
         <div className="mt-7 border-t border-stone-100 pt-6 text-center text-sm text-stone-600">
           Chưa có tài khoản?{" "}

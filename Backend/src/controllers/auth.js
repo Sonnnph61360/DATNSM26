@@ -4,6 +4,68 @@ import jwt from "jsonwebtoken";
 import User from "../models/User";
 import { nextId } from "../utils/ids";
 import { serialize } from "../utils/serialize";
+import { OAuth2Client } from "google-auth-library";
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+/** POST /google — Đăng nhập bằng Google */
+export async function googleLogin(req, res) {
+  try {
+    const { credential } = req.body;
+    if (!credential) {
+      return res.status(400).json({ message: "Thiếu Google credential" });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload?.email || payload.email_verified !== true) {
+      return res.status(400).json({ message: "Token Google không hợp lệ" });
+    }
+
+    const email = payload.email.toLowerCase();
+    const fullName = payload.name || "";
+    const avatar = payload.picture || "";
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      const id = await nextId("users");
+      user = await User.create({
+        id,
+        email,
+        password: "",           // user Google không có mật khẩu
+        fullName,
+        phone: "",
+        avatar,
+        role: "user",
+      });
+    } else {
+      // Cập nhật avatar nếu có thay đổi
+      if (avatar && user.avatar !== avatar) {
+        user.avatar = avatar;
+        await user.save();
+      }
+    }
+
+    // Kiểm tra tài khoản bị khóa (nếu model có field isActive)
+    if (user.isActive === false) {
+      return res.status(403).json({ message: "Tài khoản đã bị khóa" });
+    }
+
+    const accessToken = signToken(user);
+    return res.json({
+      accessToken,
+      user: serialize(user),
+    });
+  } catch (error) {
+    console.error("Google login error:", error);
+    return res.status(401).json({ message: "Xác thực Google thất bại" });
+  }
+}
 
 function signToken(user) {
   return jwt.sign(
@@ -60,6 +122,9 @@ export async function login(req, res) {
       return res.status(400).json({ message: "Cannot find user" });
     }
     if (!user.isActive) return res.status(403).json({ message: "Tài khoản đã bị khóa" });
+    if (!password || !user.password) {
+      return res.status(400).json({ message: "Incorrect password" });
+    }
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) {
       return res.status(400).json({ message: "Incorrect password" });
