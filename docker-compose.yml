@@ -23,14 +23,13 @@ services:
       PORT: 3000
       MONGODB_URI: mongodb://mongo:27017/db_datn_su26
       ALLOW_IN_MEMORY_DB: "false"
-      # VNPay yêu cầu vnp_CreateDate/ExpireDate theo giờ Việt Nam (GMT+7)
+
       TZ: Asia/Ho_Chi_Minh
     ports:
       - "${BACKEND_PORT:-3000}:3000"
     volumes:
-      # Dữ liệu chuẩn nạp lại mỗi lần khởi động; `npm run db:export` ghi đè file này.
       - ./Backend/data:/app/data
-      # Bản sao dữ liệu cũ được lưu trước mỗi lần xoá/nạp lại.
+
       - ./Backend/backups:/app/backups
     depends_on:
       mongo:
@@ -49,3 +48,4 @@ services:
 
 volumes:
   mongo-data:
+

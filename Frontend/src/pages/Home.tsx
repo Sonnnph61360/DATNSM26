@@ -115,7 +115,7 @@ export default function Home() {
               Nền tảng đặt sân bóng rổ trực tuyến
             </span>
             <h1 className="mt-6 max-w-2xl animate-fade-in-up text-[2.25rem] font-extrabold leading-[1.05] tracking-tight text-stone-950 sm:text-6xl lg:text-7xl" style={enterAt(0.08)}>
-              Sân đẹp đã có.
+              Sân đẹp có ngay.
               <span className="mt-1 block bg-gradient-to-r from-brand-500 via-brand-600 to-brand-700 bg-clip-text pb-1 text-transparent">Kèo hay chờ bạn.</span>
             </h1>
             <p className="mt-6 max-w-xl animate-fade-in-up text-base leading-7 text-stone-600 sm:text-lg sm:leading-8" style={enterAt(0.16)}>
