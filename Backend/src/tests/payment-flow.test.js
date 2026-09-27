@@ -14,7 +14,7 @@ import Payment from "../models/Payment";
 import BookingSlot from "../models/BookingSlot";
 import BookingHistory from "../models/BookingHistory";
 import Voucher from "../models/Voucher";
-import { cancelBooking, completeRefund, confirmBookingPayment, confirmRefundReceipt, createBooking, expirePendingPayments, getBookingDetail, getRefundProof, getRefundRequests } from "../controllers/booking";
+import { cancelBooking, checkInBooking, completeRefund, confirmBookingPayment, confirmRefundReceipt, createBooking, expirePendingPayments, getBookingDetail, getRefundProof, getRefundRequests } from "../controllers/booking";
 import { checkBookingAvailability } from "../controllers/bookingAvailability";
 import { processVnpayCallback } from "../services/vnpayPayment";
 import { requestBookingReschedule } from "../services/bookingGroupService";
@@ -195,7 +195,7 @@ async function run() {
       duration: 1,
       total: 150000,
       customer: { fullName: "Khách POS", phone: "0911222333", userId: 3 },
-      paymentMethod: "cash",
+      paymentMethod: "full",
       paymentStatus: "unpaid",
       paidAmount: 0,
       status: "pending",
@@ -208,8 +208,23 @@ async function run() {
     const posPaidBooking2 = await Booking.findOne({ id: 3 });
     assert.equal(posPaymentResponse2.result.statusCode, 200);
     assert.equal(posPaidBooking2.paymentStatus, "paid");
-    assert.equal(posPaidBooking2.status, "completed");
+    assert.equal(posPaidBooking2.status, "confirmed");
+    assert.equal(posPaidBooking2.checkedInAt, null);
     assert.equal(Number(posPaidBooking2.paidAmount), Number(posPaidBooking2.total));
+    const manualPosPayment = await Payment.findOne({ paymentCode: "MANUAL_POS_3" });
+    assert.equal(manualPosPayment.gateway, "manual");
+    assert.equal(manualPosPayment.status, "success");
+    assert.equal(manualPosPayment.amount, 150000);
+    const posConfirmationEmail = await buildPaymentConfirmationEmailWithQr(posPaidBooking2, manualPosPayment);
+    assert(posConfirmationEmail.html.includes("MÃ QR CHECK-IN"));
+    assert(posConfirmationEmail.html.includes("Mã QR check-in BK000003"));
+    assert(posConfirmationEmail.attachments[0].cid.includes("bk000003"));
+    assert.equal(posConfirmationEmail.attachments.length, 1);
+    const posCheckInResponse = responseRecorder();
+    await checkInBooking({ params: { id: "3" }, user: { id: 7, role: "admin" } }, posCheckInResponse.res);
+    assert.equal(posCheckInResponse.result.statusCode, 200);
+    assert.equal(posCheckInResponse.result.body.status, "completed");
+    assert(posCheckInResponse.result.body.checkedInAt);
 
     await Field.create({
       id: 10,
@@ -225,6 +240,30 @@ async function run() {
     ]);
     await setCounter("bookings", 100);
 
+    const depositBookingResponse = responseRecorder();
+    await createBooking({
+      user: { id: 48, email: "deposit@example.com", fullName: "Khách cọc", role: "user" },
+      body: {
+        fieldId: 10, courtId: 11, date: "2030-04-01", time: "08:00", duration: 1,
+        customer: { fullName: "Khách cọc", phone: "0900000048" },
+        services: [], paymentMethod: "deposit",
+      },
+    }, depositBookingResponse.res);
+    assert.equal(depositBookingResponse.result.statusCode, 400);
+    assert.equal(depositBookingResponse.result.body.message, "Phương thức thanh toán không hợp lệ");
+
+    const cashBookingResponse = responseRecorder();
+    await createBooking({
+      user: { id: 47, email: "cash@example.com", fullName: "Khách tiền mặt", role: "user" },
+      body: {
+        fieldId: 10, courtId: 11, date: "2030-04-02", time: "08:00", duration: 1,
+        customer: { fullName: "Khách tiền mặt", phone: "0900000047" },
+        services: [], paymentMethod: "cash",
+      },
+    }, cashBookingResponse.res);
+    assert.equal(cashBookingResponse.result.statusCode, 400);
+    assert.equal(cashBookingResponse.result.body.message, "Phương thức thanh toán không hợp lệ");
+
     const vietnamToday = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const sameDayPastResponse = responseRecorder();
     await createBooking({
@@ -232,7 +271,7 @@ async function run() {
       body: {
         fieldId: 10, courtId: 11, date: vietnamToday, time: "00:00", duration: 1,
         customer: { fullName: "Khách giờ cũ", phone: "0900000049" },
-        services: [], paymentMethod: "cash",
+        services: [], paymentMethod: "full",
       },
     }, sameDayPastResponse.res);
     assert.equal(sameDayPastResponse.result.statusCode, 400);
@@ -291,7 +330,7 @@ async function run() {
         fieldId: 10, courtId: 13, date: "2030-04-10", time: "15:00", duration: 1,
         occurrences: [{ date: "2030-04-10", time: "15:00", duration: 1 }, { date: "2030-04-17", time: "16:00", duration: 1.5 }],
         customer: { fullName: "Khách đổi giờ", phone: "0922222222" },
-        services: [], paymentMethod: "cash",
+        services: [], paymentMethod: "full",
       },
     }, adjustedScheduleResponse.res);
     assert.equal(adjustedScheduleResponse.result.statusCode, 201);
@@ -326,7 +365,7 @@ async function run() {
       body: {
         fieldId: 10, courtId: 12, date: "2030-01-05", time: "08:00", duration: 1,
         customer: { fullName: "Khách khác", phone: "0977777777" },
-        services: [], paymentMethod: "cash",
+        services: [], paymentMethod: "full",
       },
     }, conflictResponse.res);
     assert.equal(conflictResponse.result.statusCode, 409);
@@ -518,7 +557,7 @@ async function run() {
     const voucherBookingResponse = responseRecorder();
     await createBooking({
       user: { id: 71, email: "voucher@example.com", fullName: "Khách voucher", role: "user" },
-      body: { fieldId: 10, courtId: 11, date: "2030-04-07", time: "12:00", duration: 1, customer: { fullName: "Khách voucher", phone: "0944444444" }, services: [], paymentMethod: "cash", voucherCode: "step6_10", total: 1 },
+      body: { fieldId: 10, courtId: 11, date: "2030-04-07", time: "12:00", duration: 1, customer: { fullName: "Khách voucher", phone: "0944444444" }, services: [], paymentMethod: "full", voucherCode: "step6_10", total: 1 },
     }, voucherBookingResponse.res);
     assert.equal(voucherBookingResponse.result.statusCode, 201);
     assert.equal(voucherBookingResponse.result.body.groupTotal, 90000);

@@ -32,11 +32,8 @@ type BookingDraft = {
   duration?: number;
   customer?: { fullName?: string; phone?: string; note?: string };
   services?: Array<{ name?: string; quantity?: number }>;
-  paymentMethod?: PaymentMethod;
   voucherCode?: string;
 };
-
-type PaymentMethod = "deposit" | "full" | "cash";
 
 const PRESET_OPTIONS: Array<{ id: RecurrencePreset; label: string; description: string }> = [
   { id: "single", label: "Một buổi", description: "Chỉ một ngày" },
@@ -119,8 +116,6 @@ export default function Booking() {
     phone: bookingDraft?.customer?.phone || getUser()?.phone || "",
     note: bookingDraft?.customer?.note || "",
   });
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(bookingDraft?.paymentMethod || null);
-  const [paymentError, setPaymentError] = useState("");
   const todayIso = vietnamTodayIso(clockNow);
 
   useEffect(() => {
@@ -389,7 +384,6 @@ export default function Booking() {
     : null;
   const discount = activeVoucher?.discountAmount || 0;
   const total = Math.max(0, subTotal - discount);
-  const deposit = Math.round(total * 0.3);
 
   const applyVoucher = async () => {
     if (!voucherCode.trim()) {
@@ -522,12 +516,6 @@ export default function Booking() {
       toast.error("Số điện thoại không hợp lệ");
       return;
     }
-    if (!paymentMethod) {
-      setPaymentError("Vui lòng chọn cách thanh toán trước khi xác nhận đặt sân.");
-      toast.error("Vui lòng chọn phương thức thanh toán");
-      return;
-    }
-
     const user = getUser();
     setLoading(true);
 
@@ -566,7 +554,7 @@ export default function Booking() {
         email: user?.email,
       },
       services,
-      paymentMethod,
+      paymentMethod: "full" as const,
       voucherCode: activeVoucher?.code || "",
       discount: activeVoucher?.discountAmount || 0,
       createdAt: new Date().toISOString(),
@@ -580,14 +568,14 @@ export default function Booking() {
       window.dispatchEvent(new CustomEvent("booking:created", { detail: res.data }));
 
       const backendTotal = Number(res.data.groupTotal ?? res.data.total ?? 0);
-      if (paymentMethod === "cash" || backendTotal === 0) {
+      if (backendTotal === 0) {
         const code = `BK${String(res.data.id).padStart(6, "0")}`;
         const qrData = `CHECKIN-${code} | Sân: ${payload.fieldName} - ${payload.court} | Tên: ${payload.customer.fullName} | ĐT: ${payload.customer.phone}`;
         const checkinQrUrl = `https://quickchart.io/qr?text=${encodeURIComponent(qrData)}&size=250`;
 
         setSuccess({
           code,
-          paymentMethod: backendTotal === 0 ? "voucher" : "cash",
+          paymentMethod: "voucher",
           checkinQrUrl,
         });
         toast.success(backendTotal === 0 ? "Voucher đã thanh toán toàn bộ đơn!" : "Đặt sân thành công!");
@@ -596,7 +584,7 @@ export default function Booking() {
       }
 
       setLoading(false);
-      navigate("/paygate", { state: { payload, booking: res.data, deposit, total } });
+      navigate("/paygate", { state: { payload, booking: res.data, total } });
     } catch (error: unknown) {
       const err = error as { response?: { status?: number; data?: { message?: string } } };
       const errorMessage = err?.response?.data?.message;
@@ -709,20 +697,15 @@ export default function Booking() {
       Tiếp tục bước {currentStep + 1}
       <ChevronRight className="w-5 h-5" />
     </>
-  ) : !paymentMethod ? (
-    <>
-      <Wallet className="w-5 h-5" />
-      Chọn phương thức thanh toán
-    </>
-  ) : paymentMethod === "cash" ? (
+  ) : total === 0 ? (
     <>
       <CheckCircle2 className="w-5 h-5" />
-      Xác nhận đặt sân
+      Xác nhận đơn miễn phí
     </>
   ) : (
     <>
       <Wallet className="w-5 h-5" />
-      Tiếp tục thanh toán →
+      Thanh toán 100% qua VNPay →
     </>
   );
 
@@ -1214,79 +1197,16 @@ export default function Booking() {
 
             {currentStep === 3 && <>
             <section className="card p-5 sm:p-6 md:p-8">
-              <SectionTitle icon={<Wallet className="h-5 w-5" />} eyebrow="Thanh toán" title="Phương thức thanh toán" desc="Chọn cách thanh toán phù hợp với bạn." />
-
-              <fieldset
-                id="payment-methods"
-                aria-describedby={paymentError ? "payment-method-error" : undefined}
-                className="grid grid-cols-1 md:grid-cols-3 gap-3"
-              >
-                <legend className="sr-only">Chọn phương thức thanh toán</legend>
-                {[
-                  {
-                    id: "deposit",
-                    title: "Đặt cọc (30%)",
-                    desc: "Giữ sân trước, thanh toán 70% còn lại sau",
-                    badge: "Phổ biến",
-                    icon: ShieldCheck,
-                  },
-                  {
-                    id: "full",
-                    title: "Thanh toán 100%",
-                    desc: "Thẻ ATM, Visa, QR VNPay",
-                    badge: "Nhanh nhất",
-                    icon: QrCode,
-                  },
-                  {
-                    id: "cash",
-                    title: "Tiền mặt tại sân",
-                    desc: "Thanh toán trực tiếp khi đến",
-                    badge: "Linh hoạt",
-                    icon: Wallet,
-                  },
-                ].map((item) => {
-                  const active = paymentMethod === item.id;
-                  const Icon = item.icon;
-                  return (
-                    <label
-                      key={item.id}
-                      className={`${optionCard(active)} block cursor-pointer p-5 has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-brand-200`}
-                    >
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        checked={active}
-                        onChange={() => {
-                          setPaymentMethod(item.id as PaymentMethod);
-                          setPaymentError("");
-                        }}
-                        className="sr-only"
-                      />
-                      <div className="flex items-start justify-between gap-2">
-                        <span className={`grid h-11 w-11 place-items-center rounded-xl transition-colors ${active ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-600"}`}>
-                          <Icon className="h-5 w-5" aria-hidden="true" />
-                        </span>
-                        <span className={`grid h-5 w-5 place-items-center rounded-full border-2 transition ${active ? "border-brand-600" : "border-stone-300"}`} aria-hidden="true">
-                          <span className={`h-2.5 w-2.5 rounded-full bg-brand-600 transition-transform duration-200 ${active ? "scale-100" : "scale-0"}`} />
-                        </span>
-                      </div>
-                      <div className="mt-4 flex flex-wrap items-center gap-2">
-                        <span className="font-extrabold text-stone-900 text-base">{item.title}</span>
-                      </div>
-                      <div className="text-xs leading-5 text-stone-600 mt-1">{item.desc}</div>
-                      <span className={`mt-3 inline-block rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ${active ? "bg-brand-600 text-white" : "bg-stone-100 text-stone-600"}`}>
-                        {item.badge}
-                      </span>
-                    </label>
-                  );
-                })}
-              </fieldset>
-              <div className="mt-3 min-h-5" aria-live="polite">
-                {paymentError && (
-                  <p id="payment-method-error" role="alert" className="flex items-center gap-2 text-sm font-semibold text-rose-700">
-                    <AlertTriangle className="h-4 w-4" aria-hidden="true" /> {paymentError}
-                  </p>
-                )}
+              <SectionTitle icon={<Wallet className="h-5 w-5" />} eyebrow="Thanh toán" title="Thanh toán 100% qua VNPay" desc="Toàn bộ số tiền được thanh toán trực tuyến trước khi xác nhận đơn." />
+              <div className="flex items-center gap-4 rounded-2xl border border-brand-200 bg-brand-50 p-5">
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand-600 text-white">
+                  <QrCode className="h-6 w-6" aria-hidden="true" />
+                </span>
+                <div>
+                  <h3 className="font-extrabold text-stone-900">Cổng VNPay</h3>
+                  <p className="mt-1 text-sm leading-5 text-stone-600">Thẻ ATM, Visa/Mastercard hoặc QR-Pay qua ứng dụng ngân hàng.</p>
+                </div>
+                <ShieldCheck className="ml-auto h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />
               </div>
             </section>
             </>}
@@ -1369,13 +1289,6 @@ export default function Booking() {
                       </div>
                     )}
 
-                    {paymentMethod === "deposit" && (
-                      <div className="flex justify-between rounded-xl border border-brand-200 bg-brand-50 px-3 py-2">
-                        <span className="text-brand-800 font-bold">Tiền cọc trước (30%)</span>
-                        <span className="text-brand-800 font-extrabold text-base">{formatCurrency(deposit)}</span>
-                      </div>
-                    )}
-
                     <div className="flex items-end justify-between gap-3 pt-2">
                       <span className="text-stone-600 font-bold">Tổng thanh toán</span>
                       <span className="text-2xl font-black tracking-tight text-stone-950 tabular-nums">
@@ -1431,10 +1344,10 @@ export default function Booking() {
               )}
               <div className="min-w-0 flex-1">
                 <div className="text-[11px] font-bold uppercase tracking-wide text-stone-500">
-                  {paymentMethod === "deposit" && currentStep === 3 ? "Cọc trước" : "Tổng"} · Bước {currentStep}/3
+                  Tổng · Bước {currentStep}/3
                 </div>
                 <div className="truncate text-lg font-black leading-tight text-stone-950 tabular-nums">
-                  {formatCurrency(paymentMethod === "deposit" && currentStep === 3 ? deposit : total)}
+                  {formatCurrency(total)}
                 </div>
               </div>
               <button
@@ -1444,7 +1357,7 @@ export default function Booking() {
                 disabled={loading || checkingAvailability}
                 className="btn-primary min-h-12 shrink-0 rounded-xl px-4 text-sm disabled:opacity-60"
               >
-                {loading || checkingAvailability ? <Loader2 className="h-5 w-5 animate-spin" /> : currentStep < 3 ? <>Tiếp tục <ChevronRight className="h-4 w-4" /></> : paymentMethod === "cash" ? "Xác nhận" : paymentMethod ? "Thanh toán" : "Chọn thanh toán"}
+                {loading || checkingAvailability ? <Loader2 className="h-5 w-5 animate-spin" /> : currentStep < 3 ? <>Tiếp tục <ChevronRight className="h-4 w-4" /></> : total === 0 ? "Xác nhận" : "Thanh toán 100%"}
               </button>
             </div>
           </div>, document.body)}

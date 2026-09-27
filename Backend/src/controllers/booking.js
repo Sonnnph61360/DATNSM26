@@ -11,10 +11,11 @@ import { nextId } from "../utils/ids";
 import { serialize, serializeMany } from "../utils/serialize";
 import Voucher from "../models/Voucher";
 import { sendMail } from "../utils/mailer";
-import { buildCashBookingEmail, buildComplimentaryBookingEmail, buildOperationalCancellationEmail } from "../utils/bookingEmail";
+import { buildComplimentaryBookingEmail, buildOperationalCancellationEmail } from "../utils/bookingEmail";
 import { deleteRefundProof, resolveRefundProofFile, saveRefundProof } from "../services/refundProofStorage";
 import { bookingModeFor, expandBookingSchedule } from "../services/bookingPlan";
 import { appendBookingHistory, syncBookingGroup } from "../services/bookingGroupService";
+import { queuePaymentEmail } from "../services/vnpayPayment";
 import {
   calculateVoucherDiscount,
   normalizeVoucherCode,
@@ -470,7 +471,7 @@ export async function createBooking(req, res) {
     }
 
     const normalizedPaymentMethod = String(paymentMethod || "");
-    if (!["cash", "deposit", "full"].includes(normalizedPaymentMethod)) {
+    if (normalizedPaymentMethod !== "full") {
       return res.status(400).json({ message: "Phương thức thanh toán không hợp lệ" });
     }
 
@@ -501,7 +502,7 @@ export async function createBooking(req, res) {
     const createdBookingIds = [];
     let firstBooking = null;
     const isComplimentaryBooking = calculatedTotal === 0;
-    const paymentExpiresAt = normalizedPaymentMethod === "cash" || isComplimentaryBooking ? null : new Date(Date.now() + 15 * 60 * 1000);
+    const paymentExpiresAt = isComplimentaryBooking ? null : new Date(Date.now() + 15 * 60 * 1000);
     const courtLabel = normalizedMode === "full_field"
       ? `Bao toàn bộ sân (${reservableCourts.length} sân con)`
       : selectedCourt.name;
@@ -603,8 +604,7 @@ export async function createBooking(req, res) {
       }
     }
 
-    if ((normalizedPaymentMethod === "cash" || isComplimentaryBooking) &&
-        bookingCustomer.email && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    if (isComplimentaryBooking && bookingCustomer.email && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
       const emailBooking = {
         ...firstBooking.toObject(),
         groupTotal: calculatedTotal,
@@ -614,9 +614,7 @@ export async function createBooking(req, res) {
           total: sessionTotals[index],
         })),
       };
-      const message = isComplimentaryBooking
-        ? buildComplimentaryBookingEmail(emailBooking)
-        : buildCashBookingEmail(emailBooking);
+      const message = buildComplimentaryBookingEmail(emailBooking);
       sendMail(bookingCustomer.email, message.subject, message.html).catch((error) => {
         console.error("Booking confirmation email failed:", error.message);
       });
@@ -901,7 +899,7 @@ export async function confirmBookingPayment(req, res) {
     const booking = await Booking.findOne({ id });
     if (!booking) return res.status(404).json({ message: "Không tìm thấy mã đơn" });
     if (booking.status === "cancelled") return res.status(400).json({ message: "Đơn đã hủy, không thể xác nhận thanh toán" });
-    if (booking.paymentStatus === "paid" && booking.status === "completed") {
+    if (booking.paymentStatus === "paid" && ["confirmed", "completed"].includes(booking.status)) {
       return res.status(400).json({ message: "Đơn này đã được xác nhận thanh toán" });
     }
 
@@ -912,9 +910,8 @@ export async function confirmBookingPayment(req, res) {
         $set: {
           paymentStatus: "paid",
           paidAmount: total,
-          status: "completed",
+          status: "confirmed",
           paymentExpiresAt: null,
-          checkedInAt: booking.checkedInAt || new Date(),
         },
       },
       { new: true }
@@ -923,6 +920,42 @@ export async function confirmBookingPayment(req, res) {
     if (booking.bookingGroupId) {
       await syncBookingGroup(booking.bookingGroupId);
     }
+
+    const payment = await Payment.findOneAndUpdate(
+      { paymentCode: `MANUAL_POS_${id}` },
+      {
+        $set: {
+          bookingId: id,
+          bookingGroupId: booking.bookingGroupId || "",
+          paymentCode: `MANUAL_POS_${id}`,
+          transactionCode: `POS-${id}`,
+          gateway: "manual",
+          paymentKind: "full",
+          amount: total,
+          currency: "VND",
+          status: "success",
+          paidAt: new Date(),
+          rawData: { confirmedBy: Number(req.user?.id) || null },
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    const field = await Field.findOne({ id: updated.fieldId }).select("address");
+    const emailBooking = {
+      ...updated.toObject(),
+      fieldAddress: updated.fieldAddress || field?.address || "",
+      groupTotal: total,
+      groupPaidAmount: total,
+      schedule: [{
+        court: updated.court,
+        date: updated.date,
+        time: updated.time,
+        duration: updated.duration,
+        total,
+      }],
+    };
+    queuePaymentEmail(emailBooking, payment, false);
 
     await appendBookingHistory({
       booking: updated,

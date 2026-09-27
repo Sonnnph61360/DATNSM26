@@ -34,7 +34,7 @@ const bookingSchema = new mongoose.Schema(
       type: Array,
       default: []
     },
-    paymentMethod: { type: String, default: "cash" },
+    paymentMethod: { type: String, default: "full" },
     paymentStatus: { type: String, default: "unpaid" },
     paidAmount: { type: Number, default: 0, min: 0 },
     paymentExpiresAt: { type: Date, default: null },

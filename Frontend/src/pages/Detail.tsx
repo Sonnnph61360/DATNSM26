@@ -538,7 +538,7 @@ export default function Detail() {
 
                   <ul className="mt-5 space-y-3.5 border-t border-stone-100 pt-5">
                     {[
-                      { icon: ShieldCheck, text: "Đặt cọc an toàn & bảo mật" },
+                      { icon: ShieldCheck, text: "Thanh toán an toàn & bảo mật" },
                       { icon: Timer, text: "Hủy miễn phí trước 2 giờ" },
                       { icon: MailCheck, text: "Xác nhận tức thì qua email" },
                     ].map(({ icon: Icon, text }) => (

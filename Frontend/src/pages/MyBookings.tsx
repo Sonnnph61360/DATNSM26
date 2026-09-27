@@ -759,7 +759,7 @@ export default function MyBookings() {
                             <span className="text-xs font-medium text-stone-500">(Đã cọc 30% · còn {formatCurrency(Math.max(0, Number(b.groupTotal || b.total) - Math.round(Number(b.groupTotal || b.total) * 0.3)))})</span>
                           )}
                           {b.paymentMethod === "deposit" && b.paymentStatus === "unpaid" && (
-                            <span className="text-xs font-semibold text-rose-600">(Chưa thanh toán tiền cọc)</span>
+                            <span className="text-xs font-semibold text-rose-600">(Chưa thanh toán)</span>
                           )}
                           {b.paymentMethod === "cash" && (
                             <span className="text-xs font-medium text-stone-500">(Tiền mặt tại sân)</span>
@@ -840,7 +840,7 @@ export default function MyBookings() {
                             className={`btn-primary col-span-2 ${actionBase}`}
                           >
                             <CreditCard className="h-4 w-4" aria-hidden="true" />
-                            Thanh toán 70% còn lại
+                            Thanh toán số dư còn lại
                           </button>
                         )}
                       </div>

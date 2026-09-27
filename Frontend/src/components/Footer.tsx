@@ -28,7 +28,7 @@ const LINK_GROUPS = [
 
 const PROMISES = [
   { icon: CalendarCheck, title: "Giữ chỗ < 60 giây", text: "Chọn giờ, xác nhận, nhận vé QR ngay." },
-  { icon: ShieldCheck, title: "Thanh toán an toàn", text: "VNPay, VietQR hoặc tiền mặt tại sân." },
+  { icon: ShieldCheck, title: "Thanh toán an toàn", text: "Thanh toán trực tuyến 100% qua VNPay." },
   { icon: Clock, title: "Hủy linh hoạt", text: "Hoàn 100% khi hủy trước 2 giờ." },
   { icon: Trophy, title: "Cộng đồng sôi động", text: "Câu lạc bộ, giải đấu, bảng xếp hạng." },
 ];

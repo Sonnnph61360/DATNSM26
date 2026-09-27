@@ -17,7 +17,6 @@ type PosFormValues = {
   duration: number;
   total: number;
   voucher?: string;
-  paymentMethod: "cash" | "full" | "deposit";
   paidImmediately?: boolean;
 };
 
@@ -149,7 +148,7 @@ export default function AdminBookings() {
         total: values.total,
         voucherCode: values.voucher?.trim().toUpperCase() || "",
         customer: { fullName: values.fullName, phone: values.phone, note: "Tạo từ Admin POS" },
-        paymentMethod: values.paymentMethod,
+        paymentMethod: "full",
         createdAt: new Date().toISOString()
       });
 
@@ -239,7 +238,7 @@ export default function AdminBookings() {
   const confirmPayment = async (id: number) => {
     try {
       const response = await api.post<Booking>("/bookings/" + id + "/confirm-payment");
-      message.success("Đã xác nhận khách thanh toán. Đơn đã chuyển sang hoàn thành.");
+      message.success("Đã xác nhận thanh toán. Đơn đã sẵn sàng check-in.");
       setBookings((prev) => prev.map((booking) => booking.id === id ? { ...booking, ...response.data } : booking));
       setTicketBooking((current) => current?.id === id ? { ...current, ...response.data } : current);
     } catch (error: unknown) {
@@ -571,7 +570,7 @@ export default function AdminBookings() {
     <div className="space-y-6 pb-10">
       {/* Thanh công cụ */}
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <p className="m-0 min-w-0 max-w-md text-sm text-stone-600">Theo dõi toàn bộ giao dịch, đặt cọc, check-in và hủy đơn. Dữ liệu tự làm mới mỗi 10 giây.</p>
+        <p className="m-0 min-w-0 max-w-md text-sm text-stone-600">Theo dõi toàn bộ giao dịch, check-in và hủy đơn. Dữ liệu tự làm mới mỗi 10 giây.</p>
         <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <div className="w-full sm:w-[280px]">
             <Input.Search
@@ -948,13 +947,10 @@ export default function AdminBookings() {
             <Form.Item name="duration" label={<span className="font-semibold text-stone-700">Thời lượng (giờ)</span>} initialValue={1} rules={[{ required: true }]}>
               <InputNumber min={0.5} step={0.5} size="large" className="w-full rounded-xl" style={{ width: "100%" }} />
             </Form.Item>
-            <Form.Item name="paymentMethod" label={<span className="font-semibold text-stone-700">Thanh toán</span>} rules={[{ required: true }]}>
-              <Select size="large" className="rounded-xl" placeholder="Chọn hình thức">
-                <Select.Option value="cash">Tiền mặt tại sân</Select.Option>
-                <Select.Option value="full">Chuyển khoản 100%</Select.Option>
-                <Select.Option value="deposit">Thu sau</Select.Option>
-              </Select>
-            </Form.Item>
+            <div className="mb-6">
+              <div className="mb-2 text-sm font-semibold text-stone-700">Hình thức thanh toán</div>
+              <div className="flex min-h-10 items-center rounded-xl border border-stone-200 bg-white px-3 text-sm font-bold text-stone-800">VNPay · Thanh toán 100%</div>
+            </div>
             <Form.Item name="total" label={<span className="font-semibold text-stone-700">Tổng thu (VNĐ)</span>} rules={[{ required: true }]}>
               <InputNumber size="large" className="w-full rounded-xl font-bold" style={{ width: "100%" }} placeholder="0" />
             </Form.Item>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { createPortal } from "react-dom";
-import { QrCode, CheckCircle2, Loader2, ArrowLeft, CreditCard, Clock, ShieldCheck, Copy, AlertTriangle, Lock } from "lucide-react";
+import { CheckCircle2, Loader2, ArrowLeft, CreditCard, Clock, ShieldCheck, AlertTriangle, Lock } from "lucide-react";
 import { formatCurrency, api } from "../lib/api";
 import toast from "react-hot-toast";
 import axios from "axios";
@@ -10,7 +10,6 @@ export default function Paygate() {
   const location = useLocation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<"card" | "transfer" | null>(null);
   const [showBackConfirm, setShowBackConfirm] = useState(false);
   const [returningToBooking, setReturningToBooking] = useState(false);
 
@@ -84,8 +83,8 @@ export default function Paygate() {
   const groupPaidAmount = Number(booking.groupPaidAmount ?? booking.paidAmount ?? (booking.paymentStatus === "deposit_paid" ? Math.round(bookingTotal * 0.3) : 0));
   const amountToPay = isBalancePayment
     ? Math.max(0, bookingTotal - groupPaidAmount)
-    : booking.paymentMethod === "deposit" ? Math.round(bookingTotal * 0.3) : bookingTotal;
-  const paymentKind = isBalancePayment ? "balance" : booking.paymentMethod === "deposit" ? "deposit" : "full";
+    : bookingTotal;
+  const paymentKind = isBalancePayment ? "balance" : "full";
   const paymentSchedule = Array.isArray(booking.schedule)
     ? booking.schedule
     : Array.isArray(booking.groupSchedule)
@@ -101,15 +100,11 @@ export default function Paygate() {
       toast.error("Tổng tiền hoặc số buổi của booking không khớp. Chưa thể thanh toán.");
       return;
     }
-    if (!tab) {
-      toast.error("Vui lòng chọn VNPay hoặc VietQR để tiếp tục");
-      return;
-    }
     if (timeLeft <= 0 && !isBalancePayment) {
       toast.error("Đơn đã hết hạn thanh toán. Vui lòng tạo đơn mới.");
       return;
     }
-    if (tab === "card" && (!Number.isInteger(Number(amountToPay)) || Number(amountToPay) <= 0)) {
+    if (!Number.isInteger(Number(amountToPay)) || Number(amountToPay) <= 0) {
       toast.error("Số tiền thanh toán không hợp lệ");
       return;
     }
@@ -118,31 +113,16 @@ export default function Paygate() {
       // Booking thường đã được tạo từ trang Đặt sân; không tạo lần hai ở đây.
       const res = (isBalancePayment || existingBooking) ? { data: booking } : await api.post("/bookings", payload);
 
-      if (tab === "card") {
-        const vnpayRes = await api.post("/vnpay/create-url", {
-          amount: Number(amountToPay),
-          orderId: String(res.data.id),
-          paymentKind,
-          language: "vn",
-        });
-        if (!vnpayRes.data?.paymentUrl) {
-          throw new Error("Backend không trả về liên kết VNPay");
-        }
-        window.location.href = vnpayRes.data.paymentUrl;
-        return;
-      }
-
-      // VietQR không có webhook trong dự án hiện tại, vì vậy không được tự ghi
-      // nhận là đã thanh toán. Đơn vẫn giữ trạng thái unpaid để khách trả tiếp.
-      toast("Đơn đang chờ xác thực chuyển khoản.", { icon: "⏳" });
-      navigate("/my-bookings", {
-        state: {
-          successId: res.data.id,
-          paymentMethod: isBalancePayment ? "balance" : booking.paymentMethod,
-          payload: booking,
-          isAutoTransfer: false,
-        },
+      const vnpayRes = await api.post("/vnpay/create-url", {
+        amount: Number(amountToPay),
+        orderId: String(res.data.id),
+        paymentKind,
+        language: "vn",
       });
+      if (!vnpayRes.data?.paymentUrl) {
+        throw new Error("Backend không trả về liên kết VNPay");
+      }
+      window.location.href = vnpayRes.data.paymentUrl;
     } catch (error: unknown) {
       const message = axios.isAxiosError(error)
         ? error.response?.data?.message
@@ -154,19 +134,6 @@ export default function Paygate() {
     }
   };
 
-  // Cấu hình Ngân hàng
-  const BANK_ID = "MB";
-  const ACCOUNT_NO = "5510355155442";
-  const ACCOUNT_NAME = "NGUYEN THANH TU";
-  const addInfo = `DATSAN BK${booking.id || booking.customer?.phone || ""}`;
-  const vietQrUrl = `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-compact2.png?amount=${amountToPay}&addInfo=${encodeURIComponent(
-    addInfo
-  )}&accountName=${encodeURIComponent(ACCOUNT_NAME)}`;
-
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success(`Đã sao chép ${label}!`);
-  };
   const handleReturnToBooking = async () => {
     if (isBalancePayment) {
       navigate("/my-bookings", { replace: true });
@@ -208,15 +175,10 @@ export default function Paygate() {
   const ringRadius = 26;
   const ringLength = 2 * Math.PI * ringRadius;
   const amountLabel = isBalancePayment
-    ? isGroupedBooking ? "Phần còn lại của cả lịch" : "Thanh toán phần còn lại (70%)"
+    ? isGroupedBooking ? "Phần còn lại của cả lịch" : "Thanh toán phần còn lại"
     : isGroupedBooking
-      ? booking.paymentMethod === "deposit" ? `Cọc 30% cho cả lịch · ${booking.groupSize} buổi` : `Thanh toán 100% cả lịch · ${booking.groupSize} buổi`
-      : booking.paymentMethod === "deposit" ? "Số tiền cọc giữ chỗ (30%)" : "Tổng tiền thanh toán 100%";
-  const channelTabs = [
-    { id: "card" as const, label: "Cổng VNPay", desc: "ATM, Visa/Master, QR-Pay", icon: CreditCard },
-    { id: "transfer" as const, label: "Quét mã VietQR", desc: "Chuyển khoản ngân hàng", icon: QrCode },
-  ];
-
+      ? `Thanh toán 100% cả lịch · ${booking.groupSize} buổi`
+      : "Tổng tiền thanh toán 100%";
   return (
     <div className="min-h-screen bg-surface text-stone-700 py-8 px-4 md:py-12">
       <div className="max-w-5xl mx-auto">
@@ -275,161 +237,34 @@ export default function Paygate() {
         )}
 
         <div className="grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start">
-          {/* Cột trái: kênh thanh toán */}
+            {/* Cổng thanh toán */}
           <section className="card p-5 sm:p-6 md:p-8 animate-fade-in-up" aria-labelledby="channel-title">
-            <h2 id="channel-title" className="text-lg font-extrabold text-stone-950">Chọn kênh thanh toán</h2>
-            <p className="mt-1 text-sm text-stone-600">Hệ thống chỉ chuyển sang VNPay sau khi bạn chủ động chọn VNPay và bấm xác nhận.</p>
+            <h2 id="channel-title" className="text-lg font-extrabold text-stone-950">Thanh toán qua VNPay</h2>
+            <p className="mt-1 text-sm text-stone-600">Thanh toán an toàn bằng thẻ ATM nội địa, Visa/Mastercard hoặc QR-Pay trên VNPay.</p>
 
-            {/* Tabs */}
-            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {channelTabs.map((item) => {
-                const active = tab === item.id;
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setTab(item.id)}
-                    aria-pressed={active}
-                    className={`flex min-h-16 items-center gap-3 rounded-2xl border p-4 text-left transition-all duration-200 ${active
-                      ? "border-brand-500 bg-brand-50 shadow-[0_0_0_3px_var(--color-brand-100)]"
-                      : "border-stone-200 bg-white hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-soft"}`}
-                  >
-                    <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl transition-colors ${active ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-600"}`}>
-                      <Icon className="h-5 w-5" aria-hidden="true" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-extrabold text-stone-900">{item.label}</span>
-                      <span className="block text-xs text-stone-600">{item.desc}</span>
-                    </span>
-                    <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${active ? "border-brand-600" : "border-stone-300"}`} aria-hidden="true">
-                      <span className={`h-2.5 w-2.5 rounded-full bg-brand-600 transition-transform ${active ? "scale-100" : "scale-0"}`} />
-                    </span>
-                  </button>
-                );
-              })}
+            <div className="mt-6 rounded-2xl border border-stone-200 bg-surface p-6 text-center">
+              <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-2xl bg-white text-brand-600 shadow-soft ring-1 ring-brand-100">
+                <CreditCard className="h-8 w-8" aria-hidden="true" />
+              </div>
+              <h3 className="mb-2 text-lg font-extrabold text-stone-950">Cổng thanh toán VNPay</h3>
+              <p className="mx-auto mb-4 max-w-sm text-sm leading-relaxed text-stone-600">
+                Bạn sẽ được chuyển tới VNPay để hoàn tất giao dịch.
+              </p>
+              <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-700">
+                <ShieldCheck className="h-4 w-4" aria-hidden="true" /> Giao dịch được xác thực qua VNPay
+              </div>
             </div>
 
             <div className="mt-6">
-              {!tab && (
-                <div role="status" className="flex flex-col items-center rounded-2xl border border-dashed border-stone-300 bg-surface p-8 text-center">
-                  <CreditCard className="mb-3 h-8 w-8 text-stone-300" aria-hidden="true" />
-                  <h3 className="mb-1 font-extrabold text-stone-900">Chưa chọn kênh thanh toán</h3>
-                  <p className="text-sm text-stone-600">Chọn VNPay hoặc VietQR ở trên để tiếp tục.</p>
-                </div>
-              )}
-
-              {/* Tab 1: VNPay */}
-              {tab === "card" && (
-                <div className="rounded-2xl border border-stone-200 bg-surface p-6 text-center animate-fade-in">
-                  <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-2xl bg-white text-brand-600 shadow-soft ring-1 ring-brand-100">
-                    <CreditCard className="h-8 w-8" aria-hidden="true" />
-                  </div>
-                  <h3 className="mb-2 text-lg font-extrabold text-stone-950">Thanh toán tức thì qua VNPay</h3>
-                  <p className="mx-auto mb-4 max-w-sm text-sm leading-relaxed text-stone-600">
-                    Hỗ trợ thẻ ATM nội địa, Thẻ Visa/Mastercard và ứng dụng ngân hàng quét mã QR-Pay an toàn, bảo mật.
-                  </p>
-                  <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-700">
-                    <ShieldCheck className="h-4 w-4" aria-hidden="true" /> Bảo mật mã hóa SSL 256-bit
-                  </div>
-                </div>
-              )}
-
-              {/* Tab 2: Chuyển khoản VietQR */}
-              {tab === "transfer" && (
-                <div className="grid gap-5 animate-fade-in md:grid-cols-[auto_1fr] md:items-start lg:grid-cols-1">
-                  <div className="text-center">
-                    <div className="mx-auto flex h-60 w-60 items-center justify-center rounded-2xl border-2 border-brand-200 bg-white p-3 shadow-soft">
-                      <img
-                        src={vietQrUrl}
-                        alt="VietQR Chuyển khoản"
-                        className="h-full w-full object-contain"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <dl className="divide-y divide-stone-200 rounded-2xl border border-stone-200 bg-surface px-4 text-sm">
-                      <div className="flex items-center justify-between gap-3 py-3">
-                        <dt className="text-stone-600">Ngân hàng thụ hưởng</dt>
-                        <dd className="font-bold uppercase text-stone-900">{BANK_ID} - MBBANK</dd>
-                      </div>
-                      <div className="flex items-center justify-between gap-3 py-3">
-                        <dt className="text-stone-600">Số tài khoản</dt>
-                        <dd>
-                          <button
-                            type="button"
-                            onClick={() => copyToClipboard(ACCOUNT_NO, "số tài khoản")}
-                            className="flex min-h-9 items-center gap-1.5 rounded-lg px-2 font-bold text-brand-700 transition hover:bg-brand-50"
-                            aria-label={`Sao chép số tài khoản ${ACCOUNT_NO}`}
-                          >
-                            {ACCOUNT_NO} <Copy className="h-3.5 w-3.5 text-stone-500" aria-hidden="true" />
-                          </button>
-                        </dd>
-                      </div>
-                      <div className="flex items-center justify-between gap-3 py-3">
-                        <dt className="text-stone-600">Chủ tài khoản</dt>
-                        <dd className="text-right font-bold text-stone-900">{ACCOUNT_NAME}</dd>
-                      </div>
-                      <div className="flex items-center justify-between gap-3 py-3">
-                        <dt className="text-stone-600">Nội dung</dt>
-                        <dd>
-                          <button
-                            type="button"
-                            onClick={() => copyToClipboard(addInfo, "nội dung")}
-                            className="flex min-h-9 items-center gap-1.5 rounded-lg px-2 font-mono font-bold text-brand-700 transition hover:bg-brand-50"
-                            aria-label={`Sao chép nội dung ${addInfo}`}
-                          >
-                            {addInfo} <Copy className="h-3.5 w-3.5 text-stone-500" aria-hidden="true" />
-                          </button>
-                        </dd>
-                      </div>
-                    </dl>
-                    <p className="mt-3 text-xs font-medium text-stone-600">
-                      Mở ứng dụng ngân hàng, quét đúng mã và giữ nguyên nội dung chuyển khoản.
-                    </p>
-                    {import.meta.env.DEV && (
-                      <button
-                        type="button"
-                        onClick={handleConfirmPayment}
-                        disabled={loading || bookingDataMismatch}
-                        className="btn-outline mt-4 min-h-11 rounded-xl px-5 text-xs disabled:opacity-50"
-                      >
-                        {loading ? "Đang tạo đơn demo..." : "Xác nhận giao dịch demo"}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* CTA */}
-            <div className="mt-6">
-              {tab === "card" ? (
-                <button
-                  type="button"
-                  onClick={handleConfirmPayment}
-                  disabled={loading || bookingDataMismatch}
-                  className="btn-primary w-full min-h-14 rounded-xl text-base disabled:opacity-50"
-                >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="w-5 h-5" aria-hidden="true" />}
-                  Chuyển tới cổng thanh toán VNPay
-                </button>
-              ) : tab === "transfer" ? (
-                <div className="flex items-center justify-center gap-3 rounded-2xl border border-brand-200 bg-brand-50 p-4 text-center" role="status">
-                  <Loader2 className="h-5 w-5 shrink-0 animate-spin text-brand-600" aria-hidden="true" />
-                  <p className="text-sm font-semibold text-brand-900">
-                    Hệ thống đang tự động lắng nghe giao dịch chuyển khoản...
-                  </p>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  disabled
-                  className="btn-primary w-full min-h-14 rounded-xl text-base opacity-50"
-                >
-                  Chọn kênh thanh toán để tiếp tục
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleConfirmPayment}
+                disabled={loading || bookingDataMismatch}
+                className="btn-primary w-full min-h-14 rounded-xl text-base disabled:opacity-50"
+              >
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="w-5 h-5" aria-hidden="true" />}
+                Chuyển tới cổng thanh toán VNPay
+              </button>
             </div>
           </section>
 

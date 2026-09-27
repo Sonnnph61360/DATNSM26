@@ -65,7 +65,7 @@ async function sendPaymentEmail(booking, payment, refundPending) {
   }
 }
 
-function queuePaymentEmail(booking, payment, refundPending) {
+export function queuePaymentEmail(booking, payment, refundPending) {
   sendPaymentEmail(booking, payment, refundPending).catch((error) => {
     console.error("Payment confirmation email failed:", error.message);
   });

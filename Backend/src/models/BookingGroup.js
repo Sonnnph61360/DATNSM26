@@ -13,7 +13,7 @@ const bookingGroupSchema = new mongoose.Schema(
     paymentExpiresAt: { type: Date, default: null },
     userId: { type: Number, default: null, index: true },
     createdBy: { type: Number, default: null, index: true },
-    paymentMethod: { type: String, default: "cash" },
+    paymentMethod: { type: String, default: "full" },
     discountAmount: { type: Number, default: 0, min: 0 },
     refundAmount: { type: Number, default: 0, min: 0 },
     voucherCode: { type: String, default: "" },

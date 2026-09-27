@@ -53,7 +53,10 @@ router.post('/create-url', authRequired, async function (req, res, next) {
 
         const orderId = String(req.body.orderId || "");
         const requestedAmount = Number(req.body.amount);
-        const paymentKind = ["deposit", "balance", "full", "adjustment"].includes(req.body.paymentKind)
+        if (req.body.paymentKind === "deposit") {
+            return res.status(400).json({ message: "Hình thức đặt cọc không còn được hỗ trợ" });
+        }
+        const paymentKind = ["balance", "full", "adjustment"].includes(req.body.paymentKind)
             ? req.body.paymentKind
             : "full";
         if (!/^\d+$/.test(orderId) || !Number.isInteger(requestedAmount) || requestedAmount <= 0) {
@@ -90,10 +93,9 @@ router.post('/create-url', authRequired, async function (req, res, next) {
             if (groupBookings.some((item) => item.paymentStatus !== groupPaymentStatus)) {
                 return res.status(409).json({ message: "Trạng thái thanh toán của nhóm lịch không đồng nhất" });
             }
-            expectedAmount = paymentKind === "deposit" ? Math.round(groupTotal * 0.3) : paymentKind === "balance" ? Math.max(0, groupTotal - paidAmount) : groupTotal;
+            expectedAmount = paymentKind === "balance" ? Math.max(0, groupTotal - paidAmount) : groupTotal;
             if (paymentKind === "balance" && groupPaymentStatus !== "deposit_paid") return res.status(400).json({ message: "Chỉ có thể thanh toán phần còn lại cho đơn đã đặt cọc" });
             if (paymentKind !== "balance" && groupPaymentStatus !== "unpaid") return res.status(400).json({ message: "Đơn đã có giao dịch thanh toán, vui lòng chỉ thanh toán số tiền còn lại" });
-            if (paymentKind === "deposit" && booking.paymentMethod !== "deposit") return res.status(400).json({ message: "Đơn này không sử dụng hình thức đặt cọc" });
         }
         if (expectedAmount <= 0 || requestedAmount !== expectedAmount) {
             return res.status(400).json({ message: "Số tiền thanh toán không khớp với số tiền còn phải trả" });

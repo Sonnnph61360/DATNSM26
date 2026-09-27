@@ -111,7 +111,7 @@ export default function About() {
               Nâng tầm trải nghiệm bóng rổ cộng đồng.
             </h2>
             <p className="mt-5 max-w-[65ch] text-base leading-[1.8] text-stone-600">
-              GoldenState xuất phát từ niềm đam mê bóng rổ và khao khát loại bỏ mọi phiền toái khi tìm sân: không còn phải gọi điện dò hỏi lịch trống, không sợ bị trùng giờ thi đấu, thanh toán cọc minh bạch và hoàn tiền công bằng.
+              GoldenState xuất phát từ niềm đam mê bóng rổ và khao khát loại bỏ mọi phiền toái khi tìm sân: không còn phải gọi điện dò hỏi lịch trống, không sợ bị trùng giờ thi đấu, thanh toán minh bạch và hoàn tiền công bằng.
             </p>
             <ul className="mt-8 grid gap-3 sm:grid-cols-2">
               {reasons.map((reason) => (

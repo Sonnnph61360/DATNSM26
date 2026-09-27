@@ -64,7 +64,7 @@ export default function Terms() {
 
               <section id="booking" className="scroll-mt-28" data-reveal>
                 <h2 className="mb-3 text-2xl font-extrabold tracking-tight text-stone-950">3. Đặt sân và thanh toán</h2>
-                <p>Thông tin sân, khung giờ và giá được hiển thị trên hệ thống theo thời gian thực. Đơn đặt sân chỉ được xác nhận khi hệ thống ghi nhận thành công và khoản thanh toán cọc/toàn phần đã được xử lý.</p>
+                <p>Thông tin sân, khung giờ và giá được hiển thị trên hệ thống theo thời gian thực. Đơn đặt sân chỉ được xác nhận khi hệ thống ghi nhận thành công và khoản thanh toán được xử lý.</p>
                 <p className="mt-3">Thanh toán trực tuyến được bảo mật qua các cổng uy tín như VNPay và VietQR. Bạn vui lòng kiểm tra kỹ số tiền, tên sân và thời gian thi đấu trước khi hoàn tất giao dịch.</p>
               </section>
 
