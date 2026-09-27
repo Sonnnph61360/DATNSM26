@@ -6,7 +6,7 @@ const bookingHistorySchema = new mongoose.Schema(
     bookingGroupId: { type: String, default: "", index: true },
     changeType: {
       type: String,
-      enum: ["create", "update", "cancel", "reschedule", "refund", "payment"],
+      enum: ["create", "update", "cancel", "reschedule", "refund", "refund_receipt", "payment"],
       required: true,
     },
     changedBy: { type: Number, default: null },

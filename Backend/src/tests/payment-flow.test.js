@@ -1,7 +1,10 @@
 import assert from "assert";
 import crypto from "crypto";
+import fs from "fs";
 import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
+import os from "os";
+import path from "path";
 import qs from "qs";
 import Booking from "../models/Booking";
 import BookingGroup from "../models/BookingGroup";
@@ -11,11 +14,12 @@ import Payment from "../models/Payment";
 import BookingSlot from "../models/BookingSlot";
 import BookingHistory from "../models/BookingHistory";
 import Voucher from "../models/Voucher";
-import { cancelBooking, completeRefund, confirmBookingPayment, createBooking, expirePendingPayments, getBookingDetail, getRefundRequests } from "../controllers/booking";
+import { cancelBooking, completeRefund, confirmBookingPayment, confirmRefundReceipt, createBooking, expirePendingPayments, getBookingDetail, getRefundProof, getRefundRequests } from "../controllers/booking";
 import { checkBookingAvailability } from "../controllers/bookingAvailability";
 import { processVnpayCallback } from "../services/vnpayPayment";
 import { requestBookingReschedule } from "../services/bookingGroupService";
-import { buildCashBookingEmail, buildComplimentaryBookingEmail, buildPaymentConfirmationEmail } from "../utils/bookingEmail";
+import { resolveRefundProofFile, saveRefundProof } from "../services/refundProofStorage";
+import { buildCashBookingEmail, buildComplimentaryBookingEmail, buildOperationalCancellationEmail, buildPaymentConfirmationEmail, buildPaymentConfirmationEmailWithQr } from "../utils/bookingEmail";
 import { setCounter } from "../utils/ids";
 import { createVoucher, validateVoucher } from "../controllers/voucher";
 
@@ -55,6 +59,18 @@ function responseRecorder() {
   return { result, res };
 }
 
+function refundProofResponseRecorder() {
+  const result = { statusCode: 200, body: null, headers: {}, contentType: "", filePath: "" };
+  const res = {
+    status(code) { result.statusCode = code; return this; },
+    json(body) { result.body = body; return this; },
+    set(name, value) { result.headers[name] = value; return this; },
+    type(value) { result.contentType = value; return this; },
+    sendFile(filePath) { result.filePath = filePath; return this; },
+  };
+  return { result, res };
+}
+
 function localDateTimeFromNow(offsetMinutes) {
   const value = new Date(Date.now() + offsetMinutes * 60 * 1000);
   return {
@@ -70,6 +86,9 @@ async function run() {
 
   const mongod = await MongoMemoryServer.create();
   await mongoose.connect(mongod.getUri());
+  const previousProofDirectory = process.env.REFUND_PROOF_DIR;
+  const proofDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "goldenstate-refund-proof-"));
+  process.env.REFUND_PROOF_DIR = proofDirectory;
 
   try {
     await Booking.create({
@@ -579,9 +598,52 @@ async function run() {
     assert.equal(operationalRefund.refundPayments[0].amount, 100000);
 
     const partialRefundResponse = responseRecorder();
-    await completeRefund({ params: { id: "301" } }, partialRefundResponse.res);
+    const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01]);
+    await completeRefund({ params: { id: "301" }, file: { mimetype: "image/png", buffer: pngSignature } }, partialRefundResponse.res);
     assert.equal(partialRefundResponse.result.statusCode, 200);
     assert.equal(partialRefundResponse.result.body.paymentStatus, "partially_refunded");
+    assert.equal(partialRefundResponse.result.body.refundReceiptStatus, "awaiting_confirmation");
+    assert.equal(partialRefundResponse.result.body.refundProofMimeType, "image/png");
+    assert(partialRefundResponse.result.body.refundProofKey);
+    const proofBooking = await Booking.findOne({ id: 301 });
+    const savedProof = resolveRefundProofFile(proofBooking);
+    assert(savedProof);
+    assert(fs.existsSync(savedProof.filePath));
+
+    const proofReadResponse = refundProofResponseRecorder();
+    await getRefundProof({ params: { id: "301" }, user: { id: 70, role: "user" } }, proofReadResponse.res);
+    assert.equal(proofReadResponse.result.statusCode, 200);
+    assert.equal(proofReadResponse.result.contentType, "image/png");
+    assert.equal(proofReadResponse.result.headers["Cache-Control"], "private, no-store");
+    assert.equal(proofReadResponse.result.filePath, savedProof.filePath);
+
+    const unauthorizedProofResponse = refundProofResponseRecorder();
+    await getRefundProof({ params: { id: "301" }, user: { id: 71, role: "user" } }, unauthorizedProofResponse.res);
+    assert.equal(unauthorizedProofResponse.result.statusCode, 403);
+
+    await assert.rejects(
+      saveRefundProof({ mimetype: "image/png", buffer: Buffer.from("not an image") }),
+      /Ảnh minh chứng không hợp lệ/
+    );
+
+    const wrongOwnerReceiptResponse = responseRecorder();
+    await confirmRefundReceipt({ params: { id: "301" }, body: { received: true }, user: { id: 71, email: "other@example.com", role: "user" } }, wrongOwnerReceiptResponse.res);
+    assert.equal(wrongOwnerReceiptResponse.result.statusCode, 403);
+
+    const notReceivedResponse = responseRecorder();
+    await confirmRefundReceipt({ params: { id: "301" }, body: { received: false }, user: { id: 70, role: "user" } }, notReceivedResponse.res);
+    assert.equal(notReceivedResponse.result.statusCode, 200);
+    assert.equal(notReceivedResponse.result.body.refundReceiptStatus, "not_received");
+
+    const receivedResponse = responseRecorder();
+    await confirmRefundReceipt({ params: { id: "301" }, body: { received: true }, user: { id: 70, role: "user" } }, receivedResponse.res);
+    assert.equal(receivedResponse.result.statusCode, 200);
+    assert.equal(receivedResponse.result.body.refundReceiptStatus, "received");
+    assert.equal(await BookingHistory.countDocuments({ bookingId: 301, changeType: "refund_receipt" }), 2);
+
+    const reversedReceiptResponse = responseRecorder();
+    await confirmRefundReceipt({ params: { id: "301" }, body: { received: false }, user: { id: 70, role: "user" } }, reversedReceiptResponse.res);
+    assert.equal(reversedReceiptResponse.result.statusCode, 409);
 
     const email = buildPaymentConfirmationEmail(
       { ...paidBooking.toObject(), customer: { fullName: "<script>alert(1)</script>", phone: "0900000000" } },
@@ -589,6 +651,15 @@ async function run() {
     );
     assert(!email.html.includes("<script>"));
     assert(email.html.includes("&lt;script&gt;"));
+
+    const qrEmail = await buildPaymentConfirmationEmailWithQr(
+      { ...paidBooking.toObject(), id: 301 },
+      { paymentKind: "full", amount: 100000, paymentCode: "test" }
+    );
+    assert(qrEmail.html.includes("MÃ QR CHECK-IN"));
+    assert(qrEmail.html.includes("cid:checkin-qr-bk000301@goldenstate.vn"));
+    assert.equal(qrEmail.attachments.length, 1);
+    assert(qrEmail.attachments[0].content.length > 100);
 
     const cashEmail = buildCashBookingEmail({
       id: 500,
@@ -607,6 +678,21 @@ async function run() {
     assert(cashEmail.subject.includes("thanh toán tại sân"));
     assert(cashEmail.html.includes("LỊCH 2 BUỔI"));
 
+    const cancellationEmail = buildOperationalCancellationEmail({
+      id: 502,
+      fieldName: "Cơ sở Test",
+      court: "Sân A",
+      date: "2030-01-01",
+      time: "08:00",
+      refundReason: "maintenance",
+      refundAmount: 100000,
+      customer: { fullName: "<script>alert(1)</script>" },
+    });
+    assert(cancellationEmail.subject.includes("BK000502"));
+    assert(cancellationEmail.html.includes("đang được xử lý"));
+    assert(!cancellationEmail.html.includes("<script>"));
+    assert(cancellationEmail.html.includes("&lt;script&gt;"));
+
     const complimentaryEmail = buildComplimentaryBookingEmail({
       id: 501,
       fieldName: "Cơ sở Test",
@@ -623,6 +709,9 @@ async function run() {
 
     console.log("Payment flow tests passed");
   } finally {
+    if (previousProofDirectory === undefined) delete process.env.REFUND_PROOF_DIR;
+    else process.env.REFUND_PROOF_DIR = previousProofDirectory;
+    fs.rmSync(proofDirectory, { recursive: true, force: true });
     await mongoose.disconnect();
     await mongod.stop();
   }

@@ -4,3 +4,4 @@ db_datn_su26*/
 .mongodb-data/
 .mongodb.log
 backups/
+data/refund-proofs/

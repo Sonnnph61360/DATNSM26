@@ -151,6 +151,11 @@ export type Booking = {
   refundAmount?: number;
   refundRate?: number;
   refundStatus?: "none" | "pending" | "completed";
+  refundReceiptStatus?: "not_applicable" | "awaiting_confirmation" | "received" | "not_received";
+  refundReceiptConfirmedAt?: string | null;
+  refundProofKey?: string;
+  refundProofMimeType?: string;
+  refundProofUploadedAt?: string | null;
   refundStk?: string;
   refundBank?: string;
   refundReason?: string;

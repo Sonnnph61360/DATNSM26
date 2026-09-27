@@ -45,7 +45,7 @@ function StatusChip({ status, size = "md" }: { status: string; size?: "sm" | "md
   );
 }
 
-const historyLabels: Record<BookingHistoryEntry["changeType"], string> = { create: "Tạo buổi", update: "Cập nhật", cancel: "Hủy buổi", reschedule: "Đổi lịch", refund: "Hoàn tiền", payment: "Thanh toán" };
+const historyLabels: Record<BookingHistoryEntry["changeType"], string> = { create: "Tạo buổi", update: "Cập nhật", cancel: "Hủy buổi", reschedule: "Đổi lịch", refund: "Hoàn tiền", refund_receipt: "Xác nhận nhận tiền hoàn", payment: "Thanh toán" };
 
 function getBookingStartMs(booking: Booking) {
   const date = String(booking.date || "");
@@ -113,7 +113,7 @@ type BookingDetail = Booking & {
 
 type BookingHistoryEntry = {
   _id?: string;
-  changeType: "create" | "update" | "cancel" | "reschedule" | "refund" | "payment";
+  changeType: "create" | "update" | "cancel" | "reschedule" | "refund" | "refund_receipt" | "payment";
   changedAt: string;
   reason?: string;
   paymentDelta?: number;
@@ -129,6 +129,86 @@ type RefundNotification = {
   message: string;
   readAt?: string | null;
 };
+
+function RefundReceiptPrompt({ booking, onConfirm }: { booking: Booking; onConfirm: (booking: Booking, received: boolean) => void }) {
+  if (booking.refundStatus !== "completed" || Number(booking.refundAmount || 0) <= 0) return null;
+  const receiptStatus = booking.refundReceiptStatus || "awaiting_confirmation";
+
+  if (receiptStatus === "received") {
+    return <p className="mt-3 flex items-center gap-2 text-xs font-bold text-emerald-700"><CheckCircle className="h-4 w-4" aria-hidden="true" /> Bạn đã xác nhận nhận khoản hoàn tiền.</p>;
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-emerald-200 bg-white p-3 sm:max-w-88">
+      <p className="text-xs font-bold text-stone-800">
+        {receiptStatus === "not_received" ? "Bạn đã báo chưa nhận được tiền hoàn." : "Bạn đã nhận được khoản hoàn tiền này chưa?"}
+      </p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button type="button" onClick={() => onConfirm(booking, true)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-xs font-bold text-white hover:bg-emerald-700">
+          <CheckCircle className="h-3.5 w-3.5" aria-hidden="true" /> Đã nhận tiền
+        </button>
+        {receiptStatus !== "not_received" && (
+          <button type="button" onClick={() => onConfirm(booking, false)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-stone-300 px-3 text-xs font-bold text-stone-700 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700">
+            <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" /> Chưa nhận được
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RefundProofPreview({ booking }: { booking: Booking }) {
+  const [loadedProof, setLoadedProof] = useState<{ key: string; url: string } | null>(null);
+  const [failedKey, setFailedKey] = useState("");
+  const proofKey = booking.refundProofKey || "";
+  const imageUrl = loadedProof?.key === proofKey ? loadedProof.url : "";
+  const failed = failedKey === proofKey;
+
+  useEffect(() => {
+    if (!proofKey) return;
+    const controller = new AbortController();
+    let objectUrl = "";
+    let active = true;
+
+    api.get<Blob>(`/bookings/${booking.id}/refund-proof`, {
+      responseType: "blob",
+      signal: controller.signal,
+    }).then(({ data }) => {
+      if (!active) return;
+      objectUrl = URL.createObjectURL(data);
+      setLoadedProof({ key: proofKey, url: objectUrl });
+    }).catch(() => {
+      if (active) setFailedKey(proofKey);
+    });
+
+    return () => {
+      active = false;
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [booking.id, proofKey]);
+
+  if (!proofKey) {
+    if (booking.refundStatus !== "completed") return null;
+    return (
+      <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+        <p className="mb-1 flex items-center gap-1.5 text-xs font-bold text-amber-800"><FileText className="h-3.5 w-3.5 text-amber-600" aria-hidden="true" /> Ảnh minh chứng hoàn tiền</p>
+        <p className="text-xs text-amber-700">Chưa có ảnh minh chứng từ quản trị viên. Sau khi admin upload, ảnh sẽ hiện ở đây.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-stone-200 bg-white p-3">
+      <p className="mb-2 flex items-center gap-1.5 text-xs font-bold text-stone-700"><FileText className="h-3.5 w-3.5 text-brand-600" aria-hidden="true" /> Ảnh minh chứng hoàn tiền</p>
+      {failed ? <p className="text-xs text-stone-500">Không tải được ảnh minh chứng.</p> : imageUrl ? (
+        <a href={imageUrl} target="_blank" rel="noreferrer" aria-label="Mở ảnh minh chứng hoàn tiền kích thước đầy đủ">
+          <img src={imageUrl} alt={`Ảnh minh chứng hoàn tiền cho đơn BK${String(booking.id).padStart(6, "0")}`} className="max-h-64 w-full rounded-lg border border-stone-200 bg-stone-50 object-contain" />
+        </a>
+      ) : <p className="text-xs text-stone-500">Đang tải ảnh...</p>}
+    </div>
+  );
+}
 
 export default function MyBookings() {
   const navigate = useNavigate();
@@ -292,6 +372,17 @@ export default function MyBookings() {
     } catch (error: unknown) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast.error(message || "Hủy thất bại");
+    }
+  };
+
+  const confirmRefundReceipt = async (booking: Booking, received: boolean) => {
+    try {
+      const response = await api.patch<Booking>(`/bookings/${booking.id}/refund-receipt`, { received });
+      setBookings((current) => current.map((item) => item.id === booking.id ? { ...item, ...response.data } : item));
+      toast.success(received ? "Đã ghi nhận bạn nhận được tiền hoàn" : "Đã báo với sân rằng bạn chưa nhận được tiền hoàn");
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(message || "Không thể cập nhật xác nhận tiền hoàn");
     }
   };
 
@@ -599,6 +690,8 @@ export default function MyBookings() {
                                     <span className="font-semibold text-stone-700">{formatCurrency(session.total)}</span>
                                     <StatusChip status={session.status} size="sm" />
                                   </div>
+                                  <RefundReceiptPrompt booking={session} onConfirm={confirmRefundReceipt} />
+                                  <RefundProofPreview booking={session} />
                                 </div>
                               </div>
                               <div className="flex flex-wrap gap-2 pl-12 sm:justify-end sm:pl-0">
@@ -649,6 +742,8 @@ export default function MyBookings() {
                             <><strong>Đã hủy đơn.</strong> {b.refundReason === "customer_no_refund" ? "Đã đến hoặc quá giờ sân nên không hoàn tiền." : "Đơn chưa phát sinh thanh toán nên không cần hoàn tiền."}</>
                           )}
                         </p>
+                        {sessions.length <= 1 && <RefundReceiptPrompt booking={b} onConfirm={confirmRefundReceipt} />}
+                        {sessions.length <= 1 && <RefundProofPreview booking={b} />}
                       </div>
                     )}
 

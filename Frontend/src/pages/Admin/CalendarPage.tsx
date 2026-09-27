@@ -27,17 +27,23 @@ export default function CalendarPage() {
     const dateStr = value.format("YYYY-MM-DD");
     return bookings
       .filter((b) => b.date === dateStr)
-      .map((b) => ({
-        type:
-          b.status === "confirmed" || b.status === "completed"
-            ? "success"
-            : b.status === "pending"
-              ? "warning"
-              : "default",
-        time: b.time,
-        customer: b.customer?.fullName || "Khách",
-        court: b.court
-      }));
+      .map((b) => {
+        const isMatchSession = Number(b.duration || 1) >= 3 && Number(b.duration || 1) <= 4;
+        return {
+          type:
+            isMatchSession
+              ? "match"
+              : b.status === "confirmed" || b.status === "completed"
+                ? "success"
+                : b.status === "pending"
+                  ? "warning"
+                  : "default",
+          time: b.time,
+          customer: b.customer?.fullName || "Khách",
+          court: b.court,
+          label: isMatchSession ? "Đang thi đấu" : b.status === "confirmed" || b.status === "completed" ? "Đã duyệt" : b.status === "pending" ? "Chờ duyệt" : "Khác",
+        };
+      });
   };
 
   const dateCellRender = (value: Dayjs) => {
@@ -56,10 +62,11 @@ export default function CalendarPage() {
     return (
       <ul className="m-0 h-full list-none space-y-1 overflow-y-auto p-0.5 custom-scrollbar">
         {listData.map((item, index) => (
-          <li key={index} className={`rounded-md border-l-[3px] px-1.5 py-1 text-xs font-medium ${item.type === 'success' ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : (item.type === 'warning' ? 'border-brand-500 bg-brand-50 text-brand-800' : 'border-stone-400 bg-stone-100 text-stone-700')}`}>
+          <li key={index} className={`rounded-md border-l-[3px] px-1.5 py-1 text-xs font-medium ${item.type === 'match' ? 'border-violet-500 bg-violet-50 text-violet-800' : item.type === 'success' ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : (item.type === 'warning' ? 'border-brand-500 bg-brand-50 text-brand-800' : 'border-stone-400 bg-stone-100 text-stone-700')}`}>
             <div className="font-bold tabular-nums">{item.time}</div>
             <div className="mt-0.5 truncate text-[11px] opacity-90">{item.customer}</div>
             <div className="truncate text-[11px] font-semibold opacity-90">{item.court}</div>
+            <div className="mt-0.5 truncate text-[10px] font-bold uppercase tracking-wide opacity-90">{item.label}</div>
           </li>
         ))}
       </ul>
@@ -131,13 +138,14 @@ export default function CalendarPage() {
           ) : (
             <ul className="m-0 mt-4 max-h-[610px] list-none space-y-3 overflow-y-auto p-0 pr-1 custom-scrollbar">
               {selectedBookings.map((booking) => {
+                const isMatchSession = Number(booking.duration || 1) >= 3 && Number(booking.duration || 1) <= 4;
                 const ok = booking.status === "confirmed" || booking.status === "completed";
                 return (
-                  <li key={booking.id} className={`rounded-2xl border border-stone-200 border-l-4 bg-white p-4 transition-colors hover:border-brand-300 ${ok ? "!border-l-emerald-500" : "!border-l-brand-500"}`}>
+                  <li key={booking.id} className={`rounded-2xl border border-stone-200 border-l-4 bg-white p-4 transition-colors hover:border-brand-300 ${isMatchSession ? "!border-l-violet-500 bg-violet-50/40" : ok ? "!border-l-emerald-500" : "!border-l-brand-500"}`}>
                     <div className="flex items-center justify-between gap-3">
                       <div className="text-lg font-extrabold text-stone-950 tabular-nums">{booking.time}</div>
-                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${ok ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-brand-50 text-brand-800 ring-brand-200"}`}>
-                        {booking.status === "confirmed" ? "Đã duyệt" : booking.status === "completed" ? "Hoàn tất" : "Chờ duyệt"}
+                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${isMatchSession ? "bg-violet-100 text-violet-700 ring-violet-200" : ok ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-brand-50 text-brand-800 ring-brand-200"}`}>
+                        {isMatchSession ? "Đang thi đấu" : booking.status === "confirmed" ? "Đã duyệt" : booking.status === "completed" ? "Hoàn tất" : "Chờ duyệt"}
                       </span>
                     </div>
                     <div className="mt-3 space-y-1.5 text-xs text-stone-600">

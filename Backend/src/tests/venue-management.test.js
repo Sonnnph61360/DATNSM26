@@ -7,6 +7,7 @@ import Field from "../models/Field";
 import { createCourt, deleteCourt, updateCourt } from "../controllers/court";
 import { createField, deleteField } from "../controllers/field";
 import { setCounter } from "../utils/ids";
+import { addBookingServices } from "../controllers/booking";
 
 function responseRecorder() {
   const result = { statusCode: 200, body: null };
@@ -58,7 +59,24 @@ async function run() {
       total: 150000,
       customer: { fullName: "Khách Test", phone: "0900000900" },
       status: "confirmed",
+      services: [{ name: "Nước lọc", quantity: 1, price: 10000 }],
     });
+
+    const updateServicesResponse = responseRecorder();
+    await addBookingServices(
+      {
+        params: { id: "900" },
+        body: {
+          services: [{ name: "Nước lọc", quantity: 2, price: 10000 }, { name: "Nước muối khoáng", quantity: 1, price: 15000 }],
+        },
+        user: { id: 1, role: "user" },
+      },
+      updateServicesResponse.res
+    );
+    assert.equal(updateServicesResponse.result.statusCode, 200);
+    assert.equal(updateServicesResponse.result.body.services.length, 2);
+    assert.equal(updateServicesResponse.result.body.total, 185000);
+
     const blockedCourtDelete = responseRecorder();
     await deleteCourt({ params: { id: String(courtId) } }, blockedCourtDelete.res);
     assert.equal(blockedCourtDelete.result.statusCode, 409);

@@ -1,3 +1,5 @@
+import QRCode from "qrcode";
+
 function escapeHtml(value) {
   return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
 }
@@ -51,4 +53,35 @@ export function buildComplimentaryBookingEmail(booking) {
 export function buildPaymentRefundPendingEmail(booking, payment) {
   const code = `BK${String(booking.id).padStart(6, "0")}`;
   return { subject: `Thông báo hoàn tiền · ${code}`, html: shell(`<tr><td style="padding:30px 32px;"><p>Chào ${escapeHtml(booking.customer?.fullName || "Quý khách")},</p><p>Khoản thanh toán <b>${money(payment.amount)}</b> cho đơn <b>${code}</b> đang được xử lý hoàn tiền.</p></td></tr>`) };
+}
+
+export async function buildPaymentConfirmationEmailWithQr(booking, payment) {
+  const email = buildPaymentConfirmationEmail(booking, payment);
+  const code = `BK${String(booking.id).padStart(6, "0")}`;
+  const cid = `checkin-qr-${code.toLowerCase()}@goldenstate.vn`;
+  const dataUrl = await QRCode.toDataURL(`CHECKIN-${code}`, { width: 240, margin: 1, errorCorrectionLevel: "M" });
+  const qrBlock = `<div style="margin:24px 32px;text-align:center;padding:18px;border:1px solid #e5eaf0;border-radius:14px;background:#fffdf5;"><div style="font-size:12px;font-weight:700;color:#64748b;">MÃ QR CHECK-IN</div><img src="cid:${cid}" width="220" height="220" alt="Mã QR check-in ${escapeHtml(code)}" style="display:block;margin:10px auto 6px;border:1px solid #e5e7eb;border-radius:12px;"/><div style="font-size:12px;color:#64748b;">Xuất trình mã này tại quầy check-in</div></div>`;
+  return {
+    ...email,
+    html: email.html.replace("</body>", `${qrBlock}</body>`),
+    attachments: [{ filename: `${code}-checkin.png`, content: dataUrl.split(",")[1], encoding: "base64", cid }],
+  };
+}
+
+export function buildOperationalCancellationEmail(booking) {
+  const code = `BK${String(booking.id).padStart(6, "0")}`;
+  const reasons = {
+    owner_cancelled: "Chủ sân hủy lịch",
+    maintenance: "Sân cần bảo trì đột xuất",
+  };
+  const reason = reasons[booking.refundReason] || "Lịch sân thay đổi từ phía sân";
+  const refundAmount = Number(booking.refundAmount || 0);
+  const refundMessage = refundAmount > 0
+    ? `<p>Khoản hoàn <b>${money(refundAmount)}</b> đang được xử lý về phương thức thanh toán ban đầu. Khi hệ thống cập nhật đã hoàn tiền, vui lòng vào mục Đơn của tôi để xác nhận bạn đã nhận được tiền hay chưa.</p>`
+    : "<p>Đơn chưa phát sinh khoản thanh toán cần hoàn.</p>";
+
+  return {
+    subject: `Thông báo sân hủy lịch · ${code}`,
+    html: shell(`<tr><td style="padding:26px 32px;background:#0f172a;color:#fff;"><div style="color:#fbbf24;font-size:12px;font-weight:700;">GOLDENSTATE BASKETBALL</div><div style="margin-top:7px;font-size:23px;font-weight:700;">Thông báo hủy lịch sân</div></td></tr><tr><td style="padding:28px 32px 10px;"><p>Xin chào ${escapeHtml(booking.customer?.fullName || "Quý khách")},</p><p>Lịch đặt sân <b>${code}</b> đã được phía sân hủy.</p><table width="100%" cellspacing="0" cellpadding="0">${row("Cơ sở", escapeHtml(booking.fieldName || ""))}${row("Sân", escapeHtml(booking.court || ""))}${row("Thời gian", `${escapeHtml(booking.date || "")} · ${escapeHtml(booking.time || "")}`)}${row("Lý do", escapeHtml(reason))}</table>${refundMessage}<p style="color:#64748b;font-size:12px;">Nếu cần hỗ trợ, vui lòng liên hệ bộ phận chăm sóc khách hàng.</p></td></tr>`),
+  };
 }

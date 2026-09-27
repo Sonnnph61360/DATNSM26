@@ -5,16 +5,42 @@ import type { LucideIcon } from "lucide-react";
 import { api, Booking, Court, Field, formatCurrency } from "../../lib/api";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-function startOfMonth() {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1);
+type Period = "week" | "month";
+
+function dateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
-function daysAgo(n: number) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  d.setHours(0, 0, 0, 0);
-  return d;
+function periodRange(period: Period, reference: string) {
+  const selected = new Date(`${reference}T00:00:00`);
+  const start = new Date(selected);
+  if (period === "week") {
+    const day = start.getDay();
+    start.setDate(start.getDate() - (day === 0 ? 6 : day - 1));
+  } else {
+    start.setDate(1);
+  }
+  const end = new Date(start);
+  if (period === "week") end.setDate(start.getDate() + 6);
+  else {
+    end.setMonth(start.getMonth() + 1, 0);
+  }
+  return { startKey: dateKey(start), endKey: dateKey(end), days: period === "week" ? 7 : end.getDate() };
+}
+
+function addDays(value: string, amount: number) {
+  const date = new Date(`${value}T00:00:00`);
+  date.setDate(date.getDate() + amount);
+  return dateKey(date);
+}
+
+function hoursBetween(openTime: string, closeTime: string) {
+  const [openHour, openMinute] = String(openTime || "06:00").split(":").map(Number);
+  const [closeHour, closeMinute] = String(closeTime || "22:00").split(":").map(Number);
+  return Math.max(0, closeHour * 60 + closeMinute - openHour * 60 - openMinute) / 60;
 }
 
 export default function Dashboard() {
@@ -22,6 +48,8 @@ export default function Dashboard() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [courts, setCourts] = useState<Court[]>([]);
   const [fields, setFields] = useState<Field[]>([]);
+  const [period, setPeriod] = useState<Period>("week");
+  const [referenceDate, setReferenceDate] = useState(() => dateKey(new Date()));
 
   useEffect(() => {
     (async () => {
@@ -43,78 +71,64 @@ export default function Dashboard() {
   }, []);
 
   const stats = useMemo(() => {
-    const active = bookings.filter((b) => b.status !== "cancelled");
-    const paidOrConfirmed = active.filter(
+    const range = periodRange(period, referenceDate);
+    const inPeriod = bookings.filter((b) => b.status !== "cancelled" && b.date >= range.startKey && b.date <= range.endKey);
+    const paidOrConfirmed = inPeriod.filter(
       (b) => b.paymentStatus === "paid" || b.status === "confirmed" || b.status === "completed"
     );
     const revenue = paidOrConfirmed.reduce((s, b) => s + (b.total || 0), 0);
 
-    const monthStart = startOfMonth();
-    const weekStart = daysAgo(7);
-    const inMonth = active.filter((b) => new Date(b.date) >= monthStart);
-    const inWeek = active.filter((b) => new Date(b.date) >= weekStart);
-    const revenueMonth = inMonth
-      .filter((b) => b.paymentStatus === "paid" || b.status === "confirmed" || b.status === "completed")
-      .reduce((s, b) => s + (b.total || 0), 0);
-    const revenueWeek = inWeek
-      .filter((b) => b.paymentStatus === "paid" || b.status === "confirmed" || b.status === "completed")
-      .reduce((s, b) => s + (b.total || 0), 0);
-
-    const bookedHours = inMonth.reduce((s, b) => s + (b.duration || 1), 0);
-    const capacityHours = Math.max(courts.length, 1) * 16 * 30;
+    const bookedHours = inPeriod.reduce((s, b) => s + (b.duration || 1), 0);
+    const capacityHours = Math.max(courts.length, 1) * 16 * range.days;
     const fillRate = Math.min(100, Math.round((bookedHours / capacityHours) * 1000) / 10);
 
     const byField = fields.map((f) => {
-      const list = active.filter((b) => b.fieldId === f.id);
+      const fieldCourts = courts.filter((court) => court.fieldId === f.id && court.status === "active");
+      const list = inPeriod.filter((b) => b.fieldId === f.id);
       const rev = list
         .filter((b) => b.paymentStatus === "paid" || b.status === "confirmed" || b.status === "completed")
         .reduce((s, b) => s + (b.total || 0), 0);
+      const fieldCapacityHours = Math.max(fieldCourts.length, 1) * hoursBetween(f.openTime, f.closeTime) * range.days;
+      const fieldBookedHours = list.reduce((s, b) => s + (b.duration || 1), 0);
       return {
         id: f.id,
         name: f.name,
         bookings: list.length,
         revenue: rev,
+        bookedHours: fieldBookedHours,
+        fillRate: Math.min(100, Math.round((fieldBookedHours / fieldCapacityHours) * 1000) / 10),
+        operatingStatus: f.status === "active" && fieldCourts.length > 0 ? "Đang vận hành" : "Tạm dừng",
       };
     }).sort((a, b) => b.revenue - a.revenue);
 
-    const demoRevenue = [320000, 480000, 270000, 620000, 510000, 740000, 860000];
-    const demoBookings = [2, 3, 2, 4, 3, 5, 6];
     const chartData = [];
-    for (let i = 6; i >= 0; i--) {
-      const demoIndex = 6 - i;
-      const d = daysAgo(i);
-      const dateStr = d.toISOString().split('T')[0];
-      const dayBookings = active.filter(b => b.date === dateStr);
-      let dayRev = dayBookings
+    const chartDays = period === "week" ? 7 : range.days;
+    for (let index = 0; index < chartDays; index += 1) {
+      const dateStr = addDays(range.startKey, index);
+      const dayBookings = inPeriod.filter((b) => b.date === dateStr);
+      const dayRev = dayBookings
         .filter((b) => b.paymentStatus === "paid" || b.status === "confirmed" || b.status === "completed")
         .reduce((s, b) => s + (b.total || 0), 0);
 
-      if (dayRev === 0) dayRev = demoRevenue[demoIndex];
-
       chartData.push({
-        date: dateStr.split('-').slice(1).join('/'),
+        date: dateStr.slice(5).replace("-", "/"),
         revenue: dayRev,
-        bookings: dayBookings.length > 0 ? dayBookings.length : demoBookings[demoIndex]
+        bookings: dayBookings.length,
       });
     }
 
     return {
-      revenue: revenue === 0 ? 15250000 : revenue,
-      revenueMonth: revenueMonth === 0 ? 4500000 : revenueMonth,
-      revenueWeek: revenueWeek === 0 ? 1200000 : revenueWeek,
-      bookings: active.length === 0 ? 42 : active.length,
-      fillRate: fillRate === 0 ? 76.5 : fillRate,
-      byField: byField.length === 0 ? [
-        { id: 1, name: "Sân Bóng Rổ GoldenState Q1", bookings: 18, revenue: 6400000 },
-        { id: 2, name: "Trung tâm Bóng rổ Hoop Arena", bookings: 12, revenue: 4200000 },
-        { id: 3, name: "Sân Đấu Tiêu Chuẩn Thảo Điền", bookings: 8, revenue: 2900000 },
-      ] : byField,
+      revenue,
+      bookings: inPeriod.length,
+      fillRate: Math.round(fillRate * 10) / 10,
+      byField,
       chartData,
-      pending: bookings.filter((b) => b.status === "pending").length,
-      confirmed: bookings.filter((b) => b.status === "confirmed").length,
-      courts: courts.length,
+      pending: inPeriod.filter((b) => b.status === "pending").length,
+      confirmed: inPeriod.filter((b) => b.status === "confirmed").length,
+      courts: courts.filter((court) => court.status === "active").length,
+      range,
     };
-  }, [bookings, courts, fields]);
+  }, [bookings, courts, fields, period, referenceDate]);
 
   if (loading) {
     return (
@@ -132,10 +146,10 @@ export default function Dashboard() {
   }
 
   const kpis: Array<{ label: string; value: string; unit: string; icon: LucideIcon; note: string; accent?: boolean }> = [
-    { label: "Tổng doanh thu", value: new Intl.NumberFormat("vi-VN").format(stats.revenue), unit: "₫", icon: Wallet, note: "+14.2% so với tháng trước", accent: true },
-    { label: "Doanh thu 7 ngày", value: new Intl.NumberFormat("vi-VN").format(stats.revenueWeek), unit: "₫", icon: TrendingUp, note: "Tăng trưởng tốt" },
-    { label: "Tổng đơn đặt", value: String(stats.bookings), unit: "đơn", icon: CalendarCheck, note: "Tỷ lệ hoàn thành 92%" },
-    { label: "Tỷ lệ lấp đầy", value: String(stats.fillRate), unit: "%", icon: Gauge, note: "Cao điểm: 18:00 - 21:00" },
+    { label: `Doanh thu ${period === "week" ? "tuần" : "tháng"}`, value: new Intl.NumberFormat("vi-VN").format(stats.revenue), unit: "₫", icon: Wallet, note: `${stats.range.startKey} đến ${stats.range.endKey}`, accent: true },
+    { label: "Số giờ đã đặt", value: new Intl.NumberFormat("vi-VN").format(stats.byField.reduce((sum, field) => sum + field.bookedHours, 0)), unit: "giờ", icon: TrendingUp, note: `${stats.bookings} lượt đặt trong kỳ` },
+    { label: "Tổng đơn đặt", value: String(stats.bookings), unit: "đơn", icon: CalendarCheck, note: `${stats.confirmed} đơn đã xác nhận` },
+    { label: "Tỷ lệ lấp đầy", value: String(stats.fillRate), unit: "%", icon: Gauge, note: `Theo ${period === "week" ? "7 ngày" : "tháng đã chọn"}` },
   ];
 
   const statusRows = [
@@ -150,12 +164,20 @@ export default function Dashboard() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="m-0 max-w-xl text-sm text-stone-600">Thống kê doanh thu, tỷ lệ lấp đầy và tình trạng vận hành các sân bóng rổ.</p>
         <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-xl border border-stone-200 bg-white p-1" aria-label="Khoảng thời gian thống kê">
+            <button type="button" onClick={() => setPeriod("week")} className={`min-h-8 rounded-lg px-3 text-xs font-bold transition ${period === "week" ? "bg-brand-600 text-white" : "text-stone-600 hover:bg-stone-100"}`}>Theo tuần</button>
+            <button type="button" onClick={() => setPeriod("month")} className={`min-h-8 rounded-lg px-3 text-xs font-bold transition ${period === "month" ? "bg-brand-600 text-white" : "text-stone-600 hover:bg-stone-100"}`}>Theo tháng</button>
+          </div>
+          <label className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-stone-200 bg-white px-3 text-xs font-semibold text-stone-600">
+            <span className="sr-only">Chọn ngày tham chiếu</span>
+            <input type="date" value={referenceDate} onChange={(event) => setReferenceDate(event.target.value)} className="bg-transparent text-xs font-bold text-stone-700 outline-none" />
+          </label>
           <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-stone-200 bg-white px-3 text-xs font-semibold text-stone-600">
             <CalendarRange size={14} className="text-brand-600" aria-hidden="true" />
-            {new Date().toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}
+            {stats.range.startKey} – {stats.range.endKey}
           </span>
           <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 text-xs font-bold text-emerald-700">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" /> Vận hành ổn định 99.9%
+            <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" /> {stats.courts} sân đang hoạt động
           </span>
         </div>
       </div>
@@ -198,8 +220,8 @@ export default function Dashboard() {
         <section className="card min-w-0 p-5 sm:p-6 xl:col-span-2" aria-labelledby="chart-title">
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 id="chart-title" className="m-0 text-base font-extrabold text-stone-950">Doanh thu 7 ngày qua</h2>
-              <p className="m-0 mt-0.5 text-xs text-stone-500">Đơn vị: nghìn đồng (k)</p>
+              <h2 id="chart-title" className="m-0 text-base font-extrabold text-stone-950">Doanh thu theo ngày trong {period === "week" ? "tuần" : "tháng"}</h2>
+              <p className="m-0 mt-0.5 text-xs text-stone-500">Đơn vị: VNĐ · Chọn ngày để đổi kỳ thống kê</p>
             </div>
             <span className="chip">Theo thời gian thực</span>
           </div>
@@ -280,6 +302,24 @@ export default function Dashboard() {
               width: 170,
               align: "right" as const,
               render: (v: number) => <span className="text-sm font-extrabold text-brand-700 tabular-nums">{formatCurrency(v)}</span>,
+            },
+            {
+              title: "Giờ đã đặt",
+              dataIndex: "bookedHours",
+              width: 130,
+              render: (v: number) => <span className="text-sm font-semibold text-stone-600 tabular-nums">{v} giờ</span>,
+            },
+            {
+              title: "Lấp đầy",
+              dataIndex: "fillRate",
+              width: 150,
+              render: (v: number) => <span className="text-sm font-extrabold text-emerald-700 tabular-nums">{v}%</span>,
+            },
+            {
+              title: "Vận hành",
+              dataIndex: "operatingStatus",
+              width: 150,
+              render: (v: string) => <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${v === "Đang vận hành" ? "bg-emerald-50 text-emerald-700" : "bg-stone-100 text-stone-600"}`}>{v}</span>,
             },
             {
               title: "Tỷ trọng",

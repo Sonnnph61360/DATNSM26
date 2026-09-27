@@ -6,7 +6,7 @@ import BookingGroup from "../models/BookingGroup";
 import { appendBookingHistory, applyPaidAdjustment } from "./bookingGroupService";
 import { sendMail } from "../utils/mailer";
 import {
-  buildPaymentConfirmationEmail,
+  buildPaymentConfirmationEmailWithQr,
   buildPaymentRefundPendingEmail,
 } from "../utils/bookingEmail";
 
@@ -50,8 +50,8 @@ async function sendPaymentEmail(booking, payment, refundPending) {
 
   const message = refundPending
     ? buildPaymentRefundPendingEmail(booking, payment)
-    : buildPaymentConfirmationEmail(booking, payment);
-  const sent = await sendMail(recipient, message.subject, message.html);
+    : await buildPaymentConfirmationEmailWithQr(booking, payment);
+  const sent = await sendMail(recipient, message.subject, message.html, message.attachments || []);
   if (sent) {
     await Payment.updateOne(
       { _id: payment._id },

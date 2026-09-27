@@ -11,7 +11,8 @@ import { nextId } from "../utils/ids";
 import { serialize, serializeMany } from "../utils/serialize";
 import Voucher from "../models/Voucher";
 import { sendMail } from "../utils/mailer";
-import { buildCashBookingEmail, buildComplimentaryBookingEmail } from "../utils/bookingEmail";
+import { buildCashBookingEmail, buildComplimentaryBookingEmail, buildOperationalCancellationEmail } from "../utils/bookingEmail";
+import { deleteRefundProof, resolveRefundProofFile, saveRefundProof } from "../services/refundProofStorage";
 import { bookingModeFor, expandBookingSchedule } from "../services/bookingPlan";
 import { appendBookingHistory, syncBookingGroup } from "../services/bookingGroupService";
 import {
@@ -98,7 +99,9 @@ const SERVICE_PRICES = new Map([
   ["Bóng rổ", 20000],
   ["Áo pitch", 10000],
   ["Nước lọc", 10000],
+  ["Nước suối", 10000],
   ["Nước muối khoáng", 15000],
+  ["Bò Húc", 20000],
 ]);
 
 function isStaff(user) {
@@ -717,15 +720,20 @@ export async function cancelBooking(req, res) {
       paymentDelta: -policy.refundAmount, statusBefore: booking.status, statusAfter: updated.status,
     });
 
-    if (updated.customer?.email && policy.refundAmount > 0) {
-      const destination = policy.staffCancellation
-        ? "phương thức thanh toán ban đầu"
-        : (updated.refundBank + " - " + updated.refundStk);
+    if (updated.customer?.email && policy.staffCancellation) {
+      const message = buildOperationalCancellationEmail(updated);
+      sendMail(updated.customer.email, message.subject, message.html).catch((error) => {
+        console.error("Booking cancellation email failed:", error.message);
+      });
+    } else if (updated.customer?.email && policy.refundAmount > 0) {
+      const destination = updated.refundBank + " - " + updated.refundStk;
       sendMail(
         updated.customer.email,
         `Xác nhận hủy đơn BK${String(updated.id).padStart(6, "0")}`,
         `Xin chào ${updated.customer.fullName},<br/>Đơn đã được hủy với mức hoàn ${policy.refundRate}%. Hệ thống sẽ hoàn ${policy.refundAmount.toLocaleString("vi-VN")} VNĐ về ${destination}.`
-      );
+      ).catch((error) => {
+        console.error("Booking cancellation email failed:", error.message);
+      });
     }
     return res.json(serialize(updated));
   } catch (e) {
@@ -734,6 +742,8 @@ export async function cancelBooking(req, res) {
 }
 
 export async function completeRefund(req, res) {
+  let savedProof = null;
+  let proofLinked = false;
   try {
     const id = Number(req.params.id);
     const booking = await Booking.findOne({ id });
@@ -747,14 +757,28 @@ export async function completeRefund(req, res) {
     const completedPaymentStatus = Number(booking.refundAmount) > 0 && Number(booking.refundAmount) < refundableAmount(booking)
       ? "partially_refunded"
       : "refunded";
+    if (req.file) savedProof = await saveRefundProof(req.file);
     const updated = await Booking.findOneAndUpdate(
-      { id },
+      { id, refundStatus: "pending" },
       { $set: {
         refundStatus: "completed",
+        refundReceiptStatus: "awaiting_confirmation",
+        refundReceiptConfirmedAt: null,
+        ...(savedProof ? {
+          refundProofKey: savedProof.fileKey,
+          refundProofMimeType: savedProof.mimeType,
+          refundProofUploadedAt: savedProof.uploadedAt,
+        } : {}),
         ...(booking.status === "cancelled" ? { paymentStatus: completedPaymentStatus } : {}),
       } },
       { new: true }
     );
+    if (!updated) {
+      if (savedProof) await deleteRefundProof(savedProof);
+      savedProof = null;
+      return res.status(409).json({ message: "Yêu cầu hoàn tiền vừa được xử lý" });
+    }
+    proofLinked = Boolean(savedProof);
     await Payment.findOneAndUpdate(
       { paymentCode: `REFUND_${id}` },
       { bookingId: id, paymentCode: `REFUND_${id}`, paymentKind: "refund", gateway: "manual", amount: updated.refundAmount, status: "success", paidAt: new Date() },
@@ -788,7 +812,86 @@ export async function completeRefund(req, res) {
     );
     return res.json(serialize(updated));
   } catch (e) {
+    if (savedProof && !proofLinked) {
+      await deleteRefundProof(savedProof).catch((cleanupError) => {
+        console.error("Refund proof cleanup failed:", cleanupError.message);
+      });
+    }
     return res.status(400).json({ message: e.message });
+  }
+}
+
+export async function getRefundProof(req, res) {
+  try {
+    const booking = await Booking.findOne({ id: Number(req.params.id) });
+    if (!booking) return res.status(404).json({ message: "Không tìm thấy đơn đặt sân" });
+    if (!canAccessBooking(req.user, booking)) {
+      return res.status(403).json({ message: "Bạn không có quyền xem đơn này" });
+    }
+    const proof = resolveRefundProofFile(booking);
+    if (!proof) return res.status(404).json({ message: "Đơn này chưa có ảnh minh chứng hoàn tiền" });
+
+    res.set("Cache-Control", "private, no-store");
+    res.set("X-Content-Type-Options", "nosniff");
+    return res.type(proof.mimeType).sendFile(proof.filePath);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+}
+
+export async function confirmRefundReceipt(req, res) {
+  try {
+    const id = Number(req.params.id);
+    const received = req.body?.received;
+    if (typeof received !== "boolean") {
+      return res.status(400).json({ message: "Vui lòng xác nhận đã nhận được tiền hoàn hay chưa" });
+    }
+
+    const booking = await Booking.findOne({ id });
+    if (!booking) return res.status(404).json({ message: "Không tìm thấy đơn đặt sân" });
+    const ownsBooking = req.user?.role === "user" && (
+      Number(booking.customer?.userId) === Number(req.user.id) ||
+      (booking.customer?.email && String(booking.customer.email).toLowerCase() === String(req.user.email || "").toLowerCase())
+    );
+    if (!ownsBooking) return res.status(403).json({ message: "Chỉ chủ đơn mới được xác nhận tiền hoàn" });
+    if (booking.refundStatus !== "completed" || Number(booking.refundAmount || 0) <= 0) {
+      return res.status(409).json({ message: "Đơn chưa được hoàn tiền, chưa thể xác nhận" });
+    }
+
+    const currentReceiptStatus = booking.refundReceiptStatus || "awaiting_confirmation";
+    if (currentReceiptStatus === "received") {
+      if (received) return res.json(serialize(booking));
+      return res.status(409).json({ message: "Bạn đã xác nhận nhận được khoản tiền hoàn này" });
+    }
+
+    const nextReceiptStatus = received ? "received" : "not_received";
+    const updated = await Booking.findOneAndUpdate(
+      {
+        id,
+        refundStatus: "completed",
+        $or: [
+          { refundReceiptStatus: { $in: ["awaiting_confirmation", "not_received"] } },
+          { refundReceiptStatus: { $exists: false } },
+        ],
+      },
+      { $set: { refundReceiptStatus: nextReceiptStatus, refundReceiptConfirmedAt: new Date() } },
+      { new: true }
+    );
+    if (!updated) return res.status(409).json({ message: "Trạng thái xác nhận tiền hoàn vừa thay đổi" });
+
+    await appendBookingHistory({
+      booking: updated,
+      changeType: "refund_receipt",
+      user: req.user,
+      reason: received ? "customer_confirmed_refund_received" : "customer_reported_refund_not_received",
+      before: { refundReceiptStatus: currentReceiptStatus },
+      after: { refundReceiptStatus: nextReceiptStatus, refundReceiptConfirmedAt: updated.refundReceiptConfirmedAt },
+      statusBefore: updated.status,
+      statusAfter: updated.status,
+    });
+    return res.json(serialize(updated));
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
   }
 }
 
@@ -865,5 +968,58 @@ export async function deleteBooking(req, res) {
     return res.json(serialize(b));
   } catch (e) {
     return res.status(500).json({ message: e.message });
+  }
+}
+
+export async function addBookingServices(req, res) {
+  try {
+    const id = Number(req.params.id);
+    const booking = await Booking.findOne({ id });
+    if (!booking) return res.status(404).json({ message: "Không tìm thấy đơn đặt sân" });
+    if (booking.status === "cancelled") return res.status(400).json({ message: "Đơn đã hủy không thể thêm dịch vụ" });
+    if (!["confirmed", "completed"].includes(booking.status)) {
+      return res.status(400).json({ message: "Chỉ cho phép thêm dịch vụ khi đơn đã xác nhận hoặc đang diễn ra" });
+    }
+
+    const incomingServices = sanitizeServices(req.body?.services);
+    if (!incomingServices.length) return res.status(400).json({ message: "Chưa chọn dịch vụ nào để thêm" });
+
+    const existingServices = Array.isArray(booking.services) ? booking.services : [];
+    const merged = new Map(existingServices.map((service) => [
+      String(service?.name || "").trim(),
+      { name: String(service?.name || "").trim(), quantity: Number(service?.quantity || 0), price: Number(service?.price || 0) },
+    ]));
+    incomingServices.forEach((service) => {
+      const current = merged.get(service.name) || { name: service.name, quantity: 0, price: service.price };
+      current.quantity += service.quantity;
+      current.price = service.price;
+      merged.set(service.name, current);
+    });
+
+    const services = [...merged.values()].filter((service) => service.name && service.quantity > 0);
+    const existingTotal = existingServices.reduce((sum, service) => sum + Number(service.quantity || 0) * Number(service.price || 0), 0);
+    const nextTotal = services.reduce((sum, service) => sum + Number(service.quantity || 0) * Number(service.price || 0), 0);
+    const addedTotal = Math.max(0, nextTotal - existingTotal);
+    const updated = await Booking.findOneAndUpdate(
+      { id },
+      { $set: { services, total: Number(booking.total || 0) + addedTotal } },
+      { new: true, runValidators: true }
+    );
+    if (updated.bookingGroupId) await syncBookingGroup(updated.bookingGroupId);
+
+    await appendBookingHistory({
+      booking: updated,
+      changeType: "update",
+      user: req.user,
+      reason: "service_added_during_match",
+      before: { services: booking.services, total: booking.total },
+      after: { services: updated.services, total: updated.total },
+      paymentDelta: addedTotal,
+      statusBefore: booking.status,
+      statusAfter: updated.status,
+    });
+    return res.json(serialize(updated));
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
   }
 }

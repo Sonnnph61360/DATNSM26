@@ -1,7 +1,7 @@
 import type { Dayjs } from "dayjs";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Table, Select, message, Spin, Button, Input, Modal, Form, DatePicker, TimePicker, InputNumber, Divider, Tooltip, Grid, Checkbox } from "antd";
-import { QrCode, Filter, CheckCircle2, CreditCard, Banknote, Download, Plus, Zap, Landmark, CircleCheck, Copy, Printer, UserRound, Wrench } from "lucide-react";
+import { QrCode, Filter, CheckCircle2, CreditCard, Banknote, Download, Plus, Zap, Landmark, CircleCheck, Copy, Printer, UserRound, Wrench, Upload, X } from "lucide-react";
 import { api, type Booking, formatCurrency, formatSlotRange, Court } from "../../lib/api";
 import * as XLSX from 'xlsx';
 import { formatDateVi } from "../../lib/locale";
@@ -29,8 +29,13 @@ export default function AdminBookings() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [refundRequests, setRefundRequests] = useState<Booking[]>([]);
   const [refundModalBooking, setRefundModalBooking] = useState<Booking | null>(null);
+  const [refundProofFile, setRefundProofFile] = useState<File | null>(null);
+  const [refundSubmitting, setRefundSubmitting] = useState(false);
   const [operationsCancelBooking, setOperationsCancelBooking] = useState<Booking | null>(null);
   const [operationsCancelReason, setOperationsCancelReason] = useState<"owner_cancelled" | "maintenance">("owner_cancelled");
+  const [serviceModalBooking, setServiceModalBooking] = useState<Booking | null>(null);
+  const [serviceDraft, setServiceDraft] = useState([{ name: "Nước lọc", quantity: 1 }]);
+  const [serviceSubmitting, setServiceSubmitting] = useState(false);
   const [ticketBooking, setTicketBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(true);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -40,6 +45,7 @@ export default function AdminBookings() {
   const [courts, setCourts] = useState<Court[]>([]);
   const [posForm] = Form.useForm();
   const [posSubmitting, setPosSubmitting] = useState(false);
+  const refundProofPreview = useMemo(() => refundProofFile ? URL.createObjectURL(refundProofFile) : "", [refundProofFile]);
   const posCourts = courts.filter(isBookableCourt);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   // Chỉ ghim cột Mã đơn / Thao tác khi màn hình đủ rộng để phần giữa còn chỗ cuộn.
@@ -165,16 +171,30 @@ export default function AdminBookings() {
   };
 
   const completeRefund = async (booking: Booking) => {
+    setRefundSubmitting(true);
     try {
-      await api.post(`/bookings/${booking.id}/refund`);
+      const formData = new FormData();
+      if (refundProofFile) formData.append("proof", refundProofFile);
+      await api.post(`/bookings/${booking.id}/refund`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       message.success("Đã xác nhận hoàn tiền");
       setRefundModalBooking(null);
+      setRefundProofFile(null);
       fetchBookings();
     } catch (e: unknown) {
       const errorMessage = (e as { response?: { data?: { message?: string } } })?.response?.data?.message || "Không thể hoàn tiền";
       message.error(errorMessage);
+    } finally {
+      setRefundSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (refundProofPreview) URL.revokeObjectURL(refundProofPreview);
+    };
+  }, [refundProofPreview]);
 
   const cancelForOperations = async () => {
     if (!operationsCancelBooking) return;
@@ -239,6 +259,29 @@ export default function AdminBookings() {
     }
   };
 
+  const submitServiceAdd = async () => {
+    if (!serviceModalBooking) return;
+    const services = serviceDraft.filter((service) => Number(service.quantity) > 0);
+    if (!services.length) {
+      message.error("Vui lòng chọn ít nhất một dịch vụ");
+      return;
+    }
+    setServiceSubmitting(true);
+    try {
+      const response = await api.post<Booking>(`/bookings/${serviceModalBooking.id}/services`, { services });
+      setBookings((current) => current.map((booking) => booking.id === serviceModalBooking.id ? { ...booking, ...response.data } : booking));
+      setTicketBooking((current) => current?.id === serviceModalBooking.id ? { ...current, ...response.data } : current);
+      message.success("Đã thêm dịch vụ phát sinh vào đơn");
+      setServiceModalBooking(null);
+      setServiceDraft([{ name: "Nước lọc", quantity: 1 }]);
+    } catch (error: unknown) {
+      const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Không thể thêm dịch vụ";
+      message.error(errorMessage);
+    } finally {
+      setServiceSubmitting(false);
+    }
+  };
+
   const handleQrCheckIn = async (qrValue: string) => {
     if (!qrValue) return;
     const match = qrValue.match(/CHECKIN-BK(\d+)/i);
@@ -248,10 +291,17 @@ export default function AdminBookings() {
     }
     try {
       const response = await api.get<Booking>("/bookings/" + Number(match[1]) + "/detail");
-      const booking = response.data;
-      if (booking.status === "completed") message.warning("Đơn này đã được check-in trước đó.");
-      else if (booking.status === "cancelled") message.error("Đơn này đã bị hủy, không thể check-in.");
-      else message.success("Đã tìm thấy đơn. Vui lòng đối chiếu thông tin trước khi check-in.");
+      let booking = response.data;
+      if (booking.status === "completed") {
+        message.warning("Đơn này đã được check-in trước đó.");
+      } else if (booking.status === "cancelled") {
+        message.error("Đơn này đã bị hủy, không thể check-in.");
+      } else {
+        const checkInResponse = await api.post<Booking>("/bookings/" + booking.id + "/check-in");
+        booking = { ...booking, ...checkInResponse.data };
+        setBookings((current) => current.map((item) => item.id === booking.id ? { ...item, ...checkInResponse.data } : item));
+        message.success("Quét QR thành công, đơn đã được check-in.");
+      }
       setTicketBooking(booking);
     } catch (error: unknown) {
       const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -268,12 +318,21 @@ export default function AdminBookings() {
     );
   });
 
-  const statusChip = (status: Booking["status"]) => {
+  const statusChip = (status: Booking["status"], duration?: number) => {
+    const isMatchSession = Number(duration || 1) >= 3 && Number(duration || 1) <= 4;
     const map: Record<string, { label: string; cls: string; dot: string }> = {
       completed: { label: "Hoàn thành", cls: "bg-stone-100 text-stone-700 ring-stone-200", dot: "bg-stone-500" },
       confirmed: { label: "Đã xác nhận", cls: "bg-emerald-50 text-emerald-700 ring-emerald-200", dot: "bg-emerald-500" },
       cancelled: { label: "Đã hủy", cls: "bg-rose-50 text-rose-700 ring-rose-200", dot: "bg-rose-500" },
     };
+    if (isMatchSession) {
+      return (
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ring-1 ring-inset bg-violet-100 text-violet-700 ring-violet-200">
+          <span className="h-1.5 w-1.5 rounded-full bg-violet-500" aria-hidden="true" />
+          Đang thi đấu
+        </span>
+      );
+    }
     const item = map[status] || { label: "Chờ thanh toán", cls: "bg-brand-50 text-brand-800 ring-brand-200", dot: "bg-brand-500" };
     return (
       <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ring-1 ring-inset ${item.cls}`}>
@@ -396,13 +455,18 @@ export default function AdminBookings() {
           );
         }
         if (r.refundStatus === "completed") {
-          return <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800"><div className="font-bold">Đã hoàn {formatCurrency(r.refundAmount || 0)}{r.refundRate ? " (" + r.refundRate + "%)" : ""}</div><div className="mt-1">{["owner_cancelled", "maintenance", "reschedule_price_difference"].includes(r.refundReason || "") ? "Phương thức thanh toán gốc" : (r.refundBank || "—") + " · " + (r.refundStk || "—")}</div></div>;
+          const receiptMessage = r.refundReceiptStatus === "received"
+            ? "Khách đã xác nhận nhận tiền"
+            : r.refundReceiptStatus === "not_received"
+              ? "Khách báo chưa nhận tiền"
+              : "Đang chờ khách xác nhận";
+          return <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800"><div className="font-bold">Đã hoàn {formatCurrency(r.refundAmount || 0)}{r.refundRate ? " (" + r.refundRate + "%)" : ""}</div><div className="mt-1">{["owner_cancelled", "maintenance", "reschedule_price_difference"].includes(r.refundReason || "") ? "Phương thức thanh toán gốc" : (r.refundBank || "—") + " · " + (r.refundStk || "—")}</div><div className={`mt-2 border-t border-emerald-200 pt-2 font-bold ${r.refundReceiptStatus === "not_received" ? "text-rose-700" : "text-emerald-800"}`}>{receiptMessage}</div></div>;
         }
         return null;
         })();
         return (
           <div className="flex flex-col items-start gap-2">
-            {statusChip(r.status)}
+            {statusChip(r.status, r.duration)}
             {refundInfo}
           </div>
         );
@@ -416,7 +480,7 @@ export default function AdminBookings() {
       render: (_: unknown, r: Booking & { refundStk?: string }) => (
         <div className="flex flex-col gap-1.5">
           {r.refundStatus === "pending" && (
-            <Button size="small" type="primary" className="w-full !text-xs" onClick={() => setRefundModalBooking(r)}>
+            <Button size="small" type="primary" className="w-full !text-xs" onClick={() => { setRefundProofFile(null); setRefundModalBooking(r); }}>
               Hoàn tiền
             </Button>
           )}
@@ -435,6 +499,11 @@ export default function AdminBookings() {
               {r.status !== "cancelled" && (
                 <Tooltip title="Xem / In vé">
                   <Button size="small" className="flex-1" aria-label={`Xem hoặc in vé BK${String(r.id).padStart(6, "0")}`} icon={<Printer size={14} aria-hidden="true" />} onClick={() => openTicket(r)} />
+                </Tooltip>
+              )}
+              {r.status === "completed" && (
+                <Tooltip title="Thêm nước / đồ uống">
+                  <Button size="small" className="flex-1" aria-label={`Thêm dịch vụ cho BK${String(r.id).padStart(6, "0")}`} icon={<Plus size={14} aria-hidden="true" />} onClick={() => { setServiceModalBooking(r); setServiceDraft([{ name: "Nước lọc", quantity: 1 }]); }} />
                 </Tooltip>
               )}
               {(r.status === "pending" || r.status === "confirmed") && (
@@ -627,6 +696,49 @@ export default function AdminBookings() {
       </Modal>
 
       <Modal
+        title={<span className="flex items-center gap-2 text-lg font-extrabold text-stone-950"><Plus size={20} className="text-brand-600" aria-hidden="true" /> Thêm nước trong lúc thi đấu</span>}
+        open={Boolean(serviceModalBooking)}
+        onCancel={() => setServiceModalBooking(null)}
+        onOk={submitServiceAdd}
+        okText="Xác nhận thêm"
+        cancelText="Hủy"
+        confirmLoading={serviceSubmitting}
+        destroyOnClose
+      >
+        {serviceModalBooking && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-brand-100 bg-brand-50 px-3 py-2 text-xs font-medium leading-5 text-brand-800">
+              BK{String(serviceModalBooking.id).padStart(6, "0")} · {serviceModalBooking.fieldName} · {serviceModalBooking.court}<br />
+              {formatDateVi(serviceModalBooking.date)} · {formatSlotRange(serviceModalBooking.time, serviceModalBooking.duration || 1)}
+            </div>
+            {serviceDraft.map((service, index) => (
+              <div key={`${service.name}-${index}`} className="grid grid-cols-[1fr_110px] gap-3">
+                <Select
+                  value={service.name}
+                  size="large"
+                  className="w-full"
+                  onChange={(value) => setServiceDraft((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, name: value } : item))}
+                  options={[
+                    { value: "Nước lọc", label: "Nước lọc (10.000đ)" },
+                    { value: "Nước muối khoáng", label: "Nước muối khoáng (15.000đ)" },
+                  ]}
+                />
+                <InputNumber
+                  min={1}
+                  max={20}
+                  size="large"
+                  className="w-full"
+                  value={service.quantity}
+                  onChange={(value) => setServiceDraft((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: Number(value || 0) } : item))}
+                />
+              </div>
+            ))}
+            <Button type="dashed" onClick={() => setServiceDraft((current) => [...current, { name: "Nước lọc", quantity: 1 }])}>+ Thêm loại nước</Button>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
         open={Boolean(operationsCancelBooking)}
         onCancel={() => setOperationsCancelBooking(null)}
         footer={null}
@@ -665,7 +777,7 @@ export default function AdminBookings() {
 
       <Modal
         open={Boolean(refundModalBooking)}
-        onCancel={() => setRefundModalBooking(null)}
+        onCancel={() => { setRefundModalBooking(null); setRefundProofFile(null); }}
         footer={null}
         width={560}
         destroyOnClose
@@ -729,9 +841,37 @@ export default function AdminBookings() {
                   </div>
                 </div>
               )}
+              <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 p-4">
+                <label htmlFor="refund-proof-upload" className="flex cursor-pointer items-center gap-3 text-sm font-bold text-stone-800">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-brand-600 ring-1 ring-stone-200"><Upload size={18} aria-hidden="true" /></span>
+                  <span><span className="block">Ảnh minh chứng chuyển tiền <span className="font-medium text-stone-500">(không bắt buộc)</span></span><span className="mt-0.5 block text-xs font-medium text-stone-500">JPEG, PNG hoặc WebP · tối đa 5 MB</span></span>
+                </label>
+                <input
+                  id="refund-proof-upload"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="sr-only"
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0] || null;
+                    if (file && file.size > 5 * 1024 * 1024) {
+                      message.error("Ảnh minh chứng không được vượt quá 5 MB");
+                      event.currentTarget.value = "";
+                      return;
+                    }
+                    setRefundProofFile(file);
+                  }}
+                />
+                {refundProofFile && (
+                  <div className="mt-3 flex items-start gap-3 rounded-xl border border-stone-200 bg-white p-2.5">
+                    {refundProofPreview && <img src={refundProofPreview} alt="Xem trước ảnh minh chứng hoàn tiền" className="h-16 w-16 shrink-0 rounded-lg border border-stone-200 object-cover" />}
+                    <div className="min-w-0 flex-1 self-center"><div className="truncate text-xs font-bold text-stone-800">{refundProofFile.name}</div><div className="mt-1 text-[11px] text-stone-500">{(refundProofFile.size / 1024 / 1024).toFixed(2)} MB</div></div>
+                    <button type="button" onClick={() => setRefundProofFile(null)} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-stone-500 hover:bg-rose-50 hover:text-rose-700" aria-label="Bỏ ảnh minh chứng"><X size={16} aria-hidden="true" /></button>
+                  </div>
+                )}
+              </div>
               <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => setRefundModalBooking(null)} className="btn-outline min-h-11 flex-1 rounded-xl px-4 text-sm">Quay lại</button>
-                <button type="button" onClick={() => completeRefund(refundModalBooking)} className="min-h-11 flex-1 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700">Xác nhận đã chuyển tiền</button>
+                <button type="button" onClick={() => { setRefundModalBooking(null); setRefundProofFile(null); }} disabled={refundSubmitting} className="btn-outline min-h-11 flex-1 rounded-xl px-4 text-sm disabled:opacity-50">Quay lại</button>
+                <button type="button" onClick={() => completeRefund(refundModalBooking)} disabled={refundSubmitting} className="min-h-11 flex-1 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700 disabled:opacity-50">{refundSubmitting ? "Đang lưu..." : "Xác nhận đã chuyển tiền"}</button>
               </div>
             </div>
           </div>
