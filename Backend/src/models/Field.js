@@ -17,6 +17,7 @@ const fieldSchema = new mongoose.Schema(
     priceFrom: { type: Number, default: 0, min: 0 },
     rating: { type: Number, default: 0, min: 0, max: 5 },
     status: { type: String, enum: ["active", "inactive"], default: "active" },
+    createdBy: { type: Number, default: null, index: true },
     lat: { type: Number },
     lng: { type: Number },
   },

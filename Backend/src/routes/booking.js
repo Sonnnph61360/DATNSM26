@@ -11,6 +11,7 @@ import {
   cancelBooking,
   completeRefund,
   checkInBooking,
+  confirmBookingPayment,
 } from "../controllers/booking";
 import { adminRequired, authRequired, staffRequired } from "../middleware/auth";
 import { checkBookingAvailability } from "../controllers/bookingAvailability";
@@ -25,6 +26,7 @@ router.get("/:id", authRequired, getBooking);
 router.post("/", authRequired, createBooking);
 router.post("/:id/cancel", authRequired, cancelBooking);
 router.post("/:id/refund", adminRequired, completeRefund);
+router.post("/:id/confirm-payment", staffRequired, confirmBookingPayment);
 router.post("/:id/check-in", staffRequired, checkInBooking);
 router.put("/:id", staffRequired, updateBooking);
 router.patch("/:id", staffRequired, updateBooking);

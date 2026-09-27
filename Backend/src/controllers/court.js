@@ -42,6 +42,16 @@ export async function getCourt(req, res) {
   }
 }
 
+function canManageCourt(user, court, field) {
+  if (!user) return true;
+  if (user.role === "admin") return true;
+  if (user.role === "manager") {
+    const owner = field?.createdBy ?? court?.createdBy ?? null;
+    return owner == null || Number(owner) === Number(user.id);
+  }
+  return false;
+}
+
 export async function createCourt(req, res) {
   try {
     const id = await nextId("courts");
@@ -51,6 +61,7 @@ export async function createCourt(req, res) {
       fieldId: Number(req.body.fieldId),
       price: Number(req.body.price) || 0,
       type: basketballCourtType(req.body.type),
+      createdBy: req.user?.id ? Number(req.user.id) : null,
     };
 
     if (!String(body.name || "").trim() || !Number.isFinite(body.fieldId)) {
@@ -61,6 +72,9 @@ export async function createCourt(req, res) {
     }
     const parentField = await Field.findOne({ id: body.fieldId });
     if (!parentField) return res.status(404).json({ message: "Cơ sở không tồn tại" });
+    if (req.user?.role === "manager" && parentField.createdBy != null && Number(parentField.createdBy) !== Number(req.user.id)) {
+      return res.status(403).json({ message: "Bạn chỉ được quản lý sân trong cơ sở do chính mình tạo" });
+    }
 
     if (body.name && body.fieldId) {
       const existing = await Court.findOne({ name: exactName(body.name), fieldId: body.fieldId });
@@ -69,7 +83,6 @@ export async function createCourt(req, res) {
       }
     }
     const court = await Court.create(body);
-    // cập nhật courtCount
     if (body.fieldId) {
       const count = await Court.countDocuments({ fieldId: body.fieldId });
       await Field.findOneAndUpdate({ id: body.fieldId }, { courtCount: count });
@@ -85,6 +98,10 @@ export async function updateCourt(req, res) {
     const id = Number(req.params.id);
     const currentCourt = await Court.findOne({ id });
     if (!currentCourt) return res.status(404).json({ message: "Không tìm thấy sân con" });
+    const parentField = await Field.findOne({ id: currentCourt.fieldId });
+    if (!canManageCourt(req.user, currentCourt, parentField)) {
+      return res.status(403).json({ message: "Bạn chỉ được chỉnh sửa sân con thuộc cơ sở do chính mình tạo" });
+    }
     const allowed = ["fieldId", "name", "type", "price", "status", "capacity", "description", "imageUrl"];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([key]) => allowed.includes(key)));
     if (Object.prototype.hasOwnProperty.call(updates, "fieldId")) updates.fieldId = Number(updates.fieldId);
@@ -94,6 +111,12 @@ export async function updateCourt(req, res) {
     if (Object.prototype.hasOwnProperty.call(updates, "price") && (!Number.isFinite(updates.price) || updates.price < 0)) return res.status(400).json({ message: "Giá sân không hợp lệ" });
     const targetFieldId = updates.fieldId || currentCourt.fieldId;
     if (!await Field.exists({ id: targetFieldId })) return res.status(404).json({ message: "Cơ sở không tồn tại" });
+    if (req.user?.role === "manager") {
+      const targetField = await Field.findOne({ id: targetFieldId });
+      if (targetField?.createdBy != null && Number(targetField.createdBy) !== Number(req.user.id)) {
+        return res.status(403).json({ message: "Bạn chỉ được quản lý sân trong cơ sở do chính mình tạo" });
+      }
+    }
     if (Object.prototype.hasOwnProperty.call(updates, "type")) {
       updates.type = basketballCourtType(updates.type);
     }
@@ -122,6 +145,10 @@ export async function deleteCourt(req, res) {
     const id = Number(req.params.id);
     const court = await Court.findOne({ id });
     if (!court) return res.status(404).json({ message: "Not found" });
+    const parentField = await Field.findOne({ id: court.fieldId });
+    if (!canManageCourt(req.user, court, parentField)) {
+      return res.status(403).json({ message: "Bạn chỉ được xóa sân con thuộc cơ sở do chính mình tạo" });
+    }
     const booking = await Booking.findOne({
       status: { $in: ["pending", "confirmed"] },
       $or: [{ courtId: id }, { reservedCourtIds: id }],

@@ -39,7 +39,8 @@ export function verifyVnpaySignature(query, secretKey = process.env.VNP_HASH_SEC
 }
 
 async function sendPaymentEmail(booking, payment, refundPending) {
-  if (!booking.customer?.email || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
+  const recipient = booking.customer?.email;
+  if (!recipient || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
   const claimed = await Payment.findOneAndUpdate(
     { _id: payment._id, confirmationEmailSentAt: null, confirmationEmailClaimedAt: null },
     { $set: { confirmationEmailClaimedAt: new Date() } },
@@ -50,7 +51,7 @@ async function sendPaymentEmail(booking, payment, refundPending) {
   const message = refundPending
     ? buildPaymentRefundPendingEmail(booking, payment)
     : buildPaymentConfirmationEmail(booking, payment);
-  const sent = await sendMail(booking.customer.email, message.subject, message.html);
+  const sent = await sendMail(recipient, message.subject, message.html);
   if (sent) {
     await Payment.updateOne(
       { _id: payment._id },

@@ -792,6 +792,53 @@ export async function completeRefund(req, res) {
   }
 }
 
+export async function confirmBookingPayment(req, res) {
+  try {
+    const id = Number(req.params.id);
+    const booking = await Booking.findOne({ id });
+    if (!booking) return res.status(404).json({ message: "Không tìm thấy mã đơn" });
+    if (booking.status === "cancelled") return res.status(400).json({ message: "Đơn đã hủy, không thể xác nhận thanh toán" });
+    if (booking.paymentStatus === "paid" && booking.status === "completed") {
+      return res.status(400).json({ message: "Đơn này đã được xác nhận thanh toán" });
+    }
+
+    const total = Number(booking.total || 0);
+    const updated = await Booking.findOneAndUpdate(
+      { id },
+      {
+        $set: {
+          paymentStatus: "paid",
+          paidAmount: total,
+          status: "completed",
+          paymentExpiresAt: null,
+          checkedInAt: booking.checkedInAt || new Date(),
+        },
+      },
+      { new: true }
+    );
+
+    if (booking.bookingGroupId) {
+      await syncBookingGroup(booking.bookingGroupId);
+    }
+
+    await appendBookingHistory({
+      booking: updated,
+      changeType: "payment",
+      user: req.user,
+      reason: "pos_payment_confirmed",
+      before: { paymentStatus: booking.paymentStatus, paidAmount: booking.paidAmount, status: booking.status },
+      after: { paymentStatus: updated.paymentStatus, paidAmount: updated.paidAmount, status: updated.status },
+      paymentDelta: Number(updated.paidAmount || 0) - Number(booking.paidAmount || 0),
+      statusBefore: booking.status,
+      statusAfter: updated.status,
+    });
+
+    return res.json(serialize(updated));
+  } catch (e) {
+    return res.status(400).json({ message: e.message });
+  }
+}
+
 export async function checkInBooking(req, res) {
   try {
     const id = Number(req.params.id);

@@ -11,7 +11,7 @@ import Payment from "../models/Payment";
 import BookingSlot from "../models/BookingSlot";
 import BookingHistory from "../models/BookingHistory";
 import Voucher from "../models/Voucher";
-import { cancelBooking, completeRefund, createBooking, expirePendingPayments, getBookingDetail, getRefundRequests } from "../controllers/booking";
+import { cancelBooking, completeRefund, confirmBookingPayment, createBooking, expirePendingPayments, getBookingDetail, getRefundRequests } from "../controllers/booking";
 import { checkBookingAvailability } from "../controllers/bookingAvailability";
 import { processVnpayCallback } from "../services/vnpayPayment";
 import { requestBookingReschedule } from "../services/bookingGroupService";
@@ -157,12 +157,41 @@ async function run() {
       paymentExpiresAt: new Date(Date.now() - 1000),
       status: "pending",
     });
+
     await BookingSlot.create({ bookingId: 2, courtId: 2, date: "2030-01-02", time: "09:00" });
     await expirePendingPayments();
     const expiredBooking = await Booking.findOne({ id: 2 });
     assert.equal(expiredBooking.status, "cancelled");
     assert.equal(expiredBooking.cancellationReason, "payment_expired");
     assert.equal(await BookingSlot.countDocuments({ bookingId: 2 }), 0);
+
+    await Booking.create({
+      id: 3,
+      fieldId: 1,
+      courtId: 3,
+      fieldName: "Cơ sở Test",
+      court: "Sân C",
+      date: "2030-01-03",
+      time: "10:00",
+      duration: 1,
+      total: 150000,
+      customer: { fullName: "Khách POS", phone: "0911222333", userId: 3 },
+      paymentMethod: "cash",
+      paymentStatus: "unpaid",
+      paidAmount: 0,
+      status: "pending",
+    });
+    const posPaymentResponse2 = responseRecorder();
+    await confirmBookingPayment({
+      params: { id: 3 },
+      user: { id: 7, role: "admin" },
+    }, posPaymentResponse2.res);
+    const posPaidBooking2 = await Booking.findOne({ id: 3 });
+    assert.equal(posPaymentResponse2.result.statusCode, 200);
+    assert.equal(posPaidBooking2.paymentStatus, "paid");
+    assert.equal(posPaidBooking2.status, "completed");
+    assert.equal(Number(posPaidBooking2.paidAmount), Number(posPaidBooking2.total));
+
     await Field.create({
       id: 10,
       name: "Cơ sở ba sân",

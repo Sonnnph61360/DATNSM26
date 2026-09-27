@@ -11,6 +11,7 @@ const courtSchema = new mongoose.Schema(
     capacity: { type: Number, default: 10, min: 1 },
     description: { type: String, default: "" },
     imageUrl: { type: String, default: "" },
+    createdBy: { type: Number, default: null, index: true },
   },
   { timestamps: true, versionKey: false }
 );

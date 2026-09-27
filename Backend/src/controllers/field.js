@@ -43,6 +43,15 @@ export async function getField(req, res) {
   }
 }
 
+function canManageField(user, field) {
+  if (!user) return true;
+  if (user.role === "admin") return true;
+  if (user.role === "manager") {
+    return field?.createdBy == null || Number(field.createdBy) === Number(user.id);
+  }
+  return false;
+}
+
 export async function createField(req, res) {
   try {
     const { name } = req.body;
@@ -58,7 +67,11 @@ export async function createField(req, res) {
       }
     }
     const id = await nextId("fields");
-    const field = await Field.create({ ...basketballFieldPayload(req.body), id });
+    const field = await Field.create({
+      ...basketballFieldPayload(req.body),
+      id,
+      createdBy: req.user?.id ? Number(req.user.id) : null,
+    });
     return res.status(201).json(serialize(field));
   } catch (e) {
     return res.status(400).json({ message: e.message });
@@ -68,6 +81,11 @@ export async function createField(req, res) {
 export async function updateField(req, res) {
   try {
     const id = Number(req.params.id);
+    const field = await Field.findOne({ id });
+    if (!field) return res.status(404).json({ message: "Not found" });
+    if (!canManageField(req.user, field)) {
+      return res.status(403).json({ message: "Bạn chỉ được chỉnh sửa cơ sở do chính mình tạo" });
+    }
     if (req.body.status && !["active", "inactive"].includes(req.body.status)) return res.status(400).json({ message: "Trạng thái cơ sở không hợp lệ" });
     if (req.body.priceFrom != null && (!Number.isFinite(Number(req.body.priceFrom)) || Number(req.body.priceFrom) < 0)) return res.status(400).json({ message: "Giá cơ sở không hợp lệ" });
     if (req.body.name) {
@@ -79,13 +97,12 @@ export async function updateField(req, res) {
         return res.status(409).json({ message: "Tên cơ sở đã tồn tại, vui lòng nhập tên khác!" });
       }
     }
-    const field = await Field.findOneAndUpdate(
+    const updatedField = await Field.findOneAndUpdate(
       { id },
       { $set: basketballFieldPayload(req.body) },
       { new: true, runValidators: true }
     );
-    if (!field) return res.status(404).json({ message: "Not found" });
-    return res.json(serialize(field));
+    return res.json(serialize(updatedField));
   } catch (e) {
     return res.status(400).json({ message: e.message });
   }
@@ -96,6 +113,9 @@ export async function deleteField(req, res) {
     const id = Number(req.params.id);
     const field = await Field.findOne({ id });
     if (!field) return res.status(404).json({ message: "Not found" });
+    if (!canManageField(req.user, field)) {
+      return res.status(403).json({ message: "Bạn chỉ được xóa cơ sở do chính mình tạo" });
+    }
     const courts = await Court.find({ fieldId: id }).select("id");
     const courtIds = courts.map((court) => court.id);
     const booking = await Booking.findOne({

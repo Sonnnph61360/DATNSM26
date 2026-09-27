@@ -1,6 +1,6 @@
 import type { Dayjs } from "dayjs";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Table, Select, message, Spin, Button, Input, Modal, Form, DatePicker, TimePicker, InputNumber, Divider, Tooltip, Grid } from "antd";
+import { Table, Select, message, Spin, Button, Input, Modal, Form, DatePicker, TimePicker, InputNumber, Divider, Tooltip, Grid, Checkbox } from "antd";
 import { QrCode, Filter, CheckCircle2, CreditCard, Banknote, Download, Plus, Zap, Landmark, CircleCheck, Copy, Printer, UserRound, Wrench } from "lucide-react";
 import { api, type Booking, formatCurrency, formatSlotRange, Court } from "../../lib/api";
 import * as XLSX from 'xlsx';
@@ -18,6 +18,7 @@ type PosFormValues = {
   total: number;
   voucher?: string;
   paymentMethod: "cash" | "full" | "deposit";
+  paidImmediately?: boolean;
 };
 
 // Backend chỉ nhận sân bóng rổ đang hoạt động.
@@ -131,7 +132,7 @@ export default function AdminBookings() {
         return;
       }
 
-      await api.post("/bookings", {
+      const bookingResponse = await api.post<Booking>("/bookings", {
         fieldId: court.fieldId,
         courtId: court.id,
         court: court.name,
@@ -145,7 +146,13 @@ export default function AdminBookings() {
         paymentMethod: values.paymentMethod,
         createdAt: new Date().toISOString()
       });
-      message.success("Tạo đơn POS thành công!");
+
+      if (values.paidImmediately) {
+        await api.post<Booking>(`/bookings/${bookingResponse.data.id}/confirm-payment`);
+        message.success("Tạo đơn POS thành công và khách đã thanh toán!");
+      } else {
+        message.success("Tạo đơn POS thành công!");
+      }
       setIsPosOpen(false);
       posForm.resetFields();
       fetchBookings();
@@ -206,6 +213,18 @@ export default function AdminBookings() {
       setTicketBooking(response.data);
     } catch {
       message.warning("Đang hiển thị vé từ dữ liệu danh sách; chưa tải được địa chỉ chi tiết.");
+    }
+  };
+
+  const confirmPayment = async (id: number) => {
+    try {
+      const response = await api.post<Booking>("/bookings/" + id + "/confirm-payment");
+      message.success("Đã xác nhận khách thanh toán. Đơn đã chuyển sang hoàn thành.");
+      setBookings((prev) => prev.map((booking) => booking.id === id ? { ...booking, ...response.data } : booking));
+      setTicketBooking((current) => current?.id === id ? { ...current, ...response.data } : current);
+    } catch (error: unknown) {
+      const messageText = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Lỗi khi xác nhận thanh toán";
+      message.error(messageText);
     }
   };
 
@@ -399,6 +418,11 @@ export default function AdminBookings() {
           {r.refundStatus === "pending" && (
             <Button size="small" type="primary" className="w-full !text-xs" onClick={() => setRefundModalBooking(r)}>
               Hoàn tiền
+            </Button>
+          )}
+          {r.status === "pending" && r.paymentStatus !== "paid" && (
+            <Button size="small" type="primary" className="w-full !border-0 !bg-emerald-600 !text-xs hover:!bg-emerald-700" icon={<CheckCircle2 size={12} aria-hidden="true" />} onClick={() => confirmPayment(r.id)}>
+              Xác nhận TT
             </Button>
           )}
           {r.status === "confirmed" && (
@@ -795,6 +819,10 @@ export default function AdminBookings() {
               <InputNumber size="large" className="w-full rounded-xl font-bold" style={{ width: "100%" }} placeholder="0" />
             </Form.Item>
           </div>
+
+          <Form.Item name="paidImmediately" valuePropName="checked" className="!mb-0 mt-4">
+            <Checkbox>Khách đã thanh toán</Checkbox>
+          </Form.Item>
 
           <Button type="primary" htmlType="submit" size="large" block loading={posSubmitting} className="mt-5 !h-12 !text-base !font-bold">
             Chốt đơn & tạo booking
