@@ -5,6 +5,7 @@ import { QrCode, Filter, CheckCircle2, CreditCard, Banknote, Download, Plus, Zap
 import { api, type Booking, formatCurrency, formatSlotRange, Court } from "../../lib/api";
 import * as XLSX from 'xlsx';
 import { formatDateVi } from "../../lib/locale";
+import { getVietnamSlotPhase } from "../../lib/bookingTime";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import BookingPass from "../../components/BookingPass";
 
@@ -317,22 +318,31 @@ export default function AdminBookings() {
     );
   });
 
-  const statusChip = (status: Booking["status"], duration?: number) => {
-    const isMatchSession = Number(duration || 1) >= 3 && Number(duration || 1) <= 4;
+  const statusChip = (booking: Booking) => {
+    const phase = ["confirmed", "completed"].includes(booking.status)
+      ? getVietnamSlotPhase(booking.date, booking.time, Number(booking.duration || 1), booking.checkedInAt)
+      : null;
     const map: Record<string, { label: string; cls: string; dot: string }> = {
       completed: { label: "Hoàn thành", cls: "bg-stone-100 text-stone-700 ring-stone-200", dot: "bg-stone-500" },
       confirmed: { label: "Đã xác nhận", cls: "bg-emerald-50 text-emerald-700 ring-emerald-200", dot: "bg-emerald-500" },
       cancelled: { label: "Đã hủy", cls: "bg-rose-50 text-rose-700 ring-rose-200", dot: "bg-rose-500" },
     };
-    if (isMatchSession) {
+    const phaseStatus = phase === "upcoming"
+      ? { label: "Sắp diễn ra", cls: "bg-amber-50 text-amber-800 ring-amber-200", dot: "bg-amber-500" }
+      : phase === "playing"
+        ? { label: "Đang thi đấu", cls: "bg-violet-100 text-violet-700 ring-violet-200", dot: "bg-violet-500" }
+        : phase === "finished"
+          ? { label: "Đã hoàn thành", cls: "bg-stone-100 text-stone-700 ring-stone-200", dot: "bg-stone-500" }
+          : null;
+    if (phaseStatus) {
       return (
-        <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ring-1 ring-inset bg-violet-100 text-violet-700 ring-violet-200">
-          <span className="h-1.5 w-1.5 rounded-full bg-violet-500" aria-hidden="true" />
-          Đang thi đấu
+        <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ring-1 ring-inset ${phaseStatus.cls}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${phaseStatus.dot}`} aria-hidden="true" />
+          {phaseStatus.label}
         </span>
       );
     }
-    const item = map[status] || { label: "Chờ thanh toán", cls: "bg-brand-50 text-brand-800 ring-brand-200", dot: "bg-brand-500" };
+    const item = map[booking.status] || { label: "Chờ thanh toán", cls: "bg-brand-50 text-brand-800 ring-brand-200", dot: "bg-brand-500" };
     return (
       <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ring-1 ring-inset ${item.cls}`}>
         <span className={`h-1.5 w-1.5 rounded-full ${item.dot}`} aria-hidden="true" />
@@ -465,7 +475,7 @@ export default function AdminBookings() {
         })();
         return (
           <div className="flex flex-col items-start gap-2">
-            {statusChip(r.status, r.duration)}
+            {statusChip(r)}
             {refundInfo}
           </div>
         );

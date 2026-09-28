@@ -177,6 +177,7 @@ export type Booking = {
   cancellationReason?: string;
   cancelledByRole?: string;
   status: string;
+  checkedInAt?: string | null;
   createdAt: string;
   cancelledAt?: string | null;
 };
